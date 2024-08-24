@@ -2,15 +2,16 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"github.com/neurlang/wayland/wl"
 	"github.com/neurlang/wayland/wlclient"
+	"log"
 )
 
 func (s SurfaceHaver) HandleRegistryGlobalRemove(ev wl.RegistryGlobalRemoveEvent) {}
 func (s SurfaceHaver) HandleRegistryGlobal(ev wl.RegistryGlobalEvent) {
 	if ev.Interface == "wl_compositor" {
-		wlclient.RegistryBindCompositorInterface(s.reg, ev.Name, 3)
+		s.cptr = wlclient.RegistryBindCompositorInterface(s.reg, ev.Name, 3)
+        wl.Surface
 	}
 	fmt.Printf("Hello, ev %v\n", ev)
 }
@@ -19,7 +20,7 @@ type SurfaceHaver struct {
 	wlclient.RegistryListener
 	reg  *wl.Registry
 	disp *wl.Display
-	cptr bool
+	cptr *wl.Compositor
 }
 
 func NewSurfaceHaver() (*SurfaceHaver, error) {
@@ -51,8 +52,8 @@ func NewSurfaceHaver() (*SurfaceHaver, error) {
 
 func main() { // Connect to the Wayland display
 
-	_, err := NewSurfaceHaver()
-
+	haver, err := NewSurfaceHaver()
+    surface = haver. 
 	if err != nil {
 		log.Fatalf("Error al intentar obener el compositor: %v", err)
 	}
