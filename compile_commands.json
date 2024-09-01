@@ -1,0 +1,8 @@
+[
+{
+  "directory": "/home/symmetry/git/flutter-waygets",
+  "command": "/usr/bin/c++  -I/usr/include/wlroots-0.18 -I/usr/include/pixman-1 -I/usr/include/libdrm -I/home/symmetry/git/flutter-waygets/../linux-x64-embedder  -o CMakeFiles/flutter-waygets.dir/src/main.cc.o -c /home/symmetry/git/flutter-waygets/src/main.cc",
+  "file": "/home/symmetry/git/flutter-waygets/src/main.cc",
+  "output": "CMakeFiles/flutter-waygets.dir/src/main.cc.o"
+}
+]

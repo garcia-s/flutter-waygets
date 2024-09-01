@@ -1,0 +1,7 @@
+/home/symmetry/git/flutter-waygets/build/CMakeFiles/flutter-waygets.dir
+/home/symmetry/git/flutter-waygets/build/CMakeFiles/edit_cache.dir
+/home/symmetry/git/flutter-waygets/build/CMakeFiles/rebuild_cache.dir
+/home/symmetry/git/flutter-waygets/build/CMakeFiles/list_install_components.dir
+/home/symmetry/git/flutter-waygets/build/CMakeFiles/install.dir
+/home/symmetry/git/flutter-waygets/build/CMakeFiles/install/local.dir
+/home/symmetry/git/flutter-waygets/build/CMakeFiles/install/strip.dir
