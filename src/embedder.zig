@@ -29,10 +29,10 @@ pub const FlutterEmbedder = struct {
             .global_remove = global_registry_remover,
         };
 
-        c.wl_registry_add_listener(self.registry, &registry_listener, self);
+        _ = c.wl_registry_add_listener(self.registry, &registry_listener, self);
 
         // Round-trip to get the global objects
-        c.wl_display_roundtrip(self.display);
+        _ = c.wl_display_roundtrip(self.display);
 
         if (self.compositor == null or self.layer_shell == null) {
             return error.MissingGlobalObjects;
@@ -41,15 +41,17 @@ pub const FlutterEmbedder = struct {
         self.surface = c.wl_compositor_create_surface(self.compositor.?);
         if (self.surface == null) return error.SurfaceCreationFailed;
 
-        self.layer_surface = c.zwlr_layer_shell_v1_get_layer_surface(
-            self.layer_shell.?,
-            self.surface.?,
-            null, // Output
-            c.ZWLR_LAYER_SHELL_V1_LAYER_TOP,
-            "flutter_layer",
-        );
+        //THIS IS PURE HALLUCINATION
+        // self.layer_surface = c.zwlr_layer_shell_v1_get_layer_surface(
+        //     self.layer_shell.?,
+        //     self.surface.?,
+        //     null, // Output
+        //     c.ZWLR_LAYER_SHELL_V1_LAYER_TOP,
+        //     "my_flutter_layer",
+        // );
 
         if (self.layer_surface == null) return error.LayerSurfaceFailed;
+
         // Set size and anchor
         c.zwlr_layer_surface_v1_set_size(self.layer_surface.?, 1280, 720);
         c.zwlr_layer_surface_v1_set_anchor(
@@ -68,13 +70,17 @@ pub const FlutterEmbedder = struct {
     }
 
     fn global_registry_handler(
-        data: ?*anyopaque,
-        registry: *c.wl_registry,
-        name: u32,
-        interface: [*:0]const u8,
-        version: u32,
-    ) void {
-    }
+        _: ?*anyopaque,
+        _: ?*c.struct_wl_registry,
+        _: u32,
+        _: [*c]const u8,
+        _: u32,
+    ) callconv(.C) void {}
 
-    fn global_registry_remover(_: ?*anyopaque, _: *c.wl_registry, _: u32) void {}
+    fn global_registry_remover(_: ?*anyopaque, _: ?*c.wl_registry, _: u32) callconv(.C) void {}
 };
+
+// *const fn (?*anyopaque, ?*cimport.struct_wl_registry, u32) callconv(.C) void
+// *const fn (?*anyopaque, *cimport.struct_wl_registry, u32) void
+//
+// zwlr_layer_surface_v1_interface
