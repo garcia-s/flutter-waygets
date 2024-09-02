@@ -1,1 +1,0 @@
-/usr/bin/c++ "CMakeFiles/flutter-waygets.dir/src/main.cc.o" -o flutter-waygets 
