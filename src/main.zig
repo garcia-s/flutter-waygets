@@ -1,18 +1,15 @@
 const std = @import("std");
-const c = @cImport({
-    @cInclude("flutter_embedder.h");
-    @cInclude("wayland-client.h");
-    //Might need to find a better way to do this because fedora naming is weird
-});
+const FlutterEmbedder = @import("embedder.zig").FlutterEmbedder;
 
 pub fn main() void {
-    var stdout = std.io.getStdOut().writer();
-    const display = c.wl_display_connect(null);
+    var embedder = FlutterEmbedder{};
 
-    if (display == null) {
-        stdout.print("Unable to get the wayland display \n", .{}) catch {};
+    embedder.init() catch |err| {
+        std.debug.print("Failed to initialize Flutter embedder: {}\n", .{err});
         return;
-    }
+    };
 
-    stdout.print("Getting a display \n", .{}) catch {};
+    embedder.run() catch {
+        std.debug.print("Error running Flutter embedder\n", .{});
+    };
 }

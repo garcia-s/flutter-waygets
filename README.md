@@ -16,6 +16,15 @@ Things I think I know:
 Things I need to research:
 
 
+- How to get the "wlr-layer-shell-unstable-v1-protocol.h"?
+
+Answer: Turns out, you don't "get" the damn file. You use something called "wayland-scanner" to generate the file, with the xml protocol definition. So there is NO FILE, you just need the xml and you generate at build time. I wish this was written somewhere in ALL CAPS and red lettering. I've spent all day looking for that damn file.
+
+Here is the command so I don't forget: 
+
+```
+wayland-scanner client-header /usr/share/wlr-protocols/unstable/wlr-layer-shell-unstable-v1.xml wlr-layer-shell-unstable-v1-protocol.h
+```
 
 ## Research about Flutter
 

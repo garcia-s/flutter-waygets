@@ -7,7 +7,9 @@ pub fn build(b: *std.Build) void {
         .target = b.host,
     });
     exe.addIncludePath(b.path("../linux-x64-embedder"));
+    exe.addIncludePath(b.path("./include"));
     exe.linkSystemLibrary("wayland-client");
+    exe.linkSystemLibrary("wlroots-0.18");
     exe.linkLibC();
     b.installArtifact(exe);
     const run_exe = b.addRunArtifact(exe);
