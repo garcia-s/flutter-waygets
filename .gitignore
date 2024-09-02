@@ -1,7 +1,2 @@
-debug/**
-./CMakeCache.txt
-./CMakeFiles/**
-./build
-./cmake_install.cmake
-./Makefile
-./compile_commands.json
+.zig-out
+.zig-cache
