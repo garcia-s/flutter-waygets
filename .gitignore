@@ -1,2 +1,5 @@
-.zig-out
-.zig-cache
+zig-out
+.zig-*
+#Just compile them brah
+include/
+

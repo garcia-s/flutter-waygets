@@ -1,8 +1,8 @@
 const std = @import("std");
-const FlutterEmbedder = @import("embedder.zig").FlutterEmbedder;
+const embed = @import("embedder.zig");
 
 pub fn main() void {
-    var embedder = FlutterEmbedder{};
+    var embedder = embed.FlutterEmbedder{};
 
     embedder.init() catch |err| {
         std.debug.print("Failed to initialize Flutter embedder: {}\n", .{err});

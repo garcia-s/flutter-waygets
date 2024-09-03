@@ -3,10 +3,9 @@
 const std = @import("std");
 
 const c = @cImport({
-    @cDefine("WLR_USE_UNSTABLE", "");
-    @cInclude("flutter_embedder.h");
     @cInclude("wayland-client.h");
-    @cInclude("wlr/types/wlr_layer_shell_v1.h");
+    @cInclude("flutter_embedder.h");
+    @cInclude("wlr-layer-shell-unstable-v1-client-protocol.h");
 });
 
 pub const FlutterEmbedder = struct {
@@ -70,15 +69,41 @@ pub const FlutterEmbedder = struct {
     }
 
     fn global_registry_handler(
-        _: ?*anyopaque,
-        _: ?*c.struct_wl_registry,
-        _: u32,
-        _: [*c]const u8,
-        _: u32,
-    ) callconv(.C) void {}
+        data: ?*anyopaque,
+        registry: ?*c.struct_wl_registry,
+        name: u32,
+        iface: [*c]const u8,
+        version: u32,
+    ) callconv(.C) void {
+        const embedder: *FlutterEmbedder = @ptrCast(@alignCast(data));
+        if (std.mem.eql(u8, std.mem.span(iface), "wl_compositor")) {
+            embedder.compositor = @ptrCast(
+                c.wl_registry_bind(
+                    registry,
+                    name,
+                    &[_]c.wl_interface{c.wl_compositor_interface},
+                    version,
+                ),
+            );
+        } else if (std.mem.eql(u8, std.mem.span(iface), "zwlr_layer_shell_v1")) {
+            embedder.layer_shell = @ptrCast(
+                c.wl_registry_bind(
+                    registry,
+                    name,
+                    &[_]c.wl_interface{c.zwlr_layer_surface_v1_interface},
+                    version,
+                ),
+            );
+        }
+    }
 
     fn global_registry_remover(_: ?*anyopaque, _: ?*c.wl_registry, _: u32) callconv(.C) void {}
 };
+
+// *const fn (?*anyopaque, ?*cimport.struct_wl_registry, u32, [*c]const u8, u32) callconv(.C) void
+// *const fn (?*anyopaque, ?*cimport.struct_wl_registry, u32, [*c]u8, u32) callconv(.C) void
+//
+// @ptrCast([*c]u32, @alignCast(@alignOf(*u32), surface.*.pixels));
 
 // *const fn (?*anyopaque, ?*cimport.struct_wl_registry, u32) callconv(.C) void
 // *const fn (?*anyopaque, *cimport.struct_wl_registry, u32) void
