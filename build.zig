@@ -9,16 +9,19 @@ pub fn build(b: *std.Build) void {
         .target = b.host,
     });
 
-    exe.linkSystemLibrary("wayland-client");
     exe.addIncludePath(b.path(include_dir));
-    exe.addIncludePath(b.path("../linux-x64-embedder"));
-
+    exe.addLibraryPath(b.path("../linux-x64-embedder"));
+    exe.addSystemIncludePath(b.path("../linux-x64-embedder"));
+    exe.linkSystemLibrary("wayland-client");
+    exe.linkSystemLibrary("flutter_engine");
     exe.addCSourceFiles(.{
         .files = &.{
             "./include/xdg-shell-protocol.c",
             "./include/wlr-layer-shell-unstable-v1-protocol.c",
         },
     });
+    exe.linkLibC();
+
     b.installArtifact(exe);
     const run_exe = b.addRunArtifact(exe);
     const run_step = b.step("run", "Running the app");
