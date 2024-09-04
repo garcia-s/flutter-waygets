@@ -58,15 +58,43 @@ pub const FlutterEmbedder = struct {
         c.wl_surface_commit(self.surface.?);
     }
 
-    pub fn run(self: *FlutterEmbedder) !void {
-        const config = c.FlutterOpenGLRendererConfig{};
-        config.make_current = fn (userdata: ?anyopaque) bool{return false};
-        config.clear_current = fn (userdata: ?anyopaque) bool{return false};
-        config.present = fn (userdata: ?anyopaque) bool{return false};
-        config.fbo_callback = fn (?*anyopaque) u32{
-            //TODO: IMPLEMENT
-            return 0,
+    pub fn run(self: *FlutterEmbedder, project_path: *const []u8, icudtl_path: *const []u8) !void {
+        const config: c.FlutterRendererConfig = c.FlutterRendererConfig{
+            .type = c.kOpenGL,
+            .unnamed_0 = .{
+                .open_gl = c.FlutterOpenGLRendererConfig{
+                    .struct_size = @sizeOf(c.FlutterOpenGLRendererConfig),
+                    .make_current = make_current,
+                    .clear_current = clear_current,
+                    .present = present,
+                    .fbo_callback = fbo_callback,
+                    .make_resource_current = make_resource_current,
+                },
+            },
         };
+        const alloc = std.heap.page_allocator;
+        const assets_path = try std.fmt.allocPrint(
+            alloc,
+            "{s}{s}",
+            .{ project_path, "/build/flutter_assets" },
+        );
+
+        const args = c.FlutterProjectArgs{
+            .struct_size = @sizeOf(c.FlutterProjectArgs),
+            .assets_path = @ptrCast(assets_path.ptr),
+            .icu_data_path = @ptrCast(icudtl_path),
+        };
+
+        var engine: c.FlutterEngine = undefined;
+
+        _ = c.FlutterEngineRun(
+            3,
+            @ptrCast(&config),
+            @ptrCast(&args),
+            //IS this any data I want to pass to it?
+            self,
+            @ptrCast(&engine),
+        );
 
         while (true) {
             if (c.wl_display_dispatch(self.display) == -1) {
@@ -105,6 +133,42 @@ pub const FlutterEmbedder = struct {
     }
 
     fn global_registry_remover(_: ?*anyopaque, _: ?*c.wl_registry, _: u32) callconv(.C) void {}
+
+    //TODO: OpenGL context setup
+    fn make_current(_: ?*anyopaque) callconv(.C) bool {
+        return true;
+    }
+
+    //TODO: Setup OpenGL context cleanup
+    fn clear_current(_: ?*anyopaque) callconv(.C) bool {
+        return true;
+    }
+
+    //TODO: WTF is a swap buffer?
+    fn present(_: ?*anyopaque) callconv(.C) bool {
+        return true;
+    }
+
+    //Framebuffer Object (FBO).
+    //I dont know what it's and in the example this just returns 0.
+    fn fbo_callback(_: ?*anyopaque) callconv(.C) u32 {
+        return 0;
+    }
+
+    //resource context setup. What in all hells is that?
+    fn make_resource_current(_: ?*anyopaque) callconv(.C) bool {
+        return true;
+    }
+
+    // fn gl_proc_resolver(_: [*c]const u8) callconv(.C) ?*const u8 {
+    //     // Your GL proc resolver here
+    //     return null;
+    // }
+
+    // Implement your surface presentation logic here
+    fn surface_present(_: ?*anyopaque, _: *anyopaque) callconv(.C) bool {
+        return true;
+    }
 };
 
 // *const fn (?*anyopaque, ?*cimport.struct_wl_registry, u32, [*c]const u8, u32) callconv(.C) void
