@@ -1,6 +1,8 @@
 //Embedder file
 //
 const std = @import("std");
+const vulkan = @import("vulkan_config.zig");
+const opengl = @import("opengl_config.zig");
 
 const c = @cImport({
     @cInclude("wayland-client.h");
@@ -60,9 +62,9 @@ pub const FlutterEmbedder = struct {
 
     pub fn run(self: *FlutterEmbedder, project_path: *const []u8, icudtl_path: *const []u8) !void {
         const config: c.FlutterRendererConfig = c.FlutterRendererConfig{
-            .type = c.kVuklan,
+            .type = c.kOpenGL,
             .unnamed_0 = .{
-                .vulkan = c.FlutterVulkanRendererConfig{},
+                .open_gl = opengl.FlutterOpenGLRendererConfig{},
             },
         };
         const alloc = std.heap.page_allocator;

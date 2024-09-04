@@ -1,11 +1,25 @@
+const std = @import("std");
 const c = @cImport({
     @cInclude("flutter_embedder.h");
+    @cInclude("EGL/egl.h");
+    @cInclude("EGL/eglext.h");
 });
 
 //TODO: OpenGL context setup
 ///The parameter here is a pointer to what we passed as "user_data"
 ///which for now is the FlutterEmbedder instance
+pub fn CreateFlutterOpenGLRenderConfig() *c.FlutterOpenGLRendererConfig {
+    return c.FlutterOpenGLRendererConfig{
+        .struct_size = @sizeOf(c.FlutterOpenGLRendererConfig),
+        .make_current = make_current,
+    };
+}
+
 fn make_current(_: ?*anyopaque) callconv(.C) bool {
+    const display = c.eglGetDisplay(c.EGL_DEFAULT_DISPLAY);
+    if (display == c.EGL_NO_DISPLAY) {
+        sdt.debug.print("Failed to get the EGL display\n", .{});
+    }
     return true;
 }
 
