@@ -60,16 +60,9 @@ pub const FlutterEmbedder = struct {
 
     pub fn run(self: *FlutterEmbedder, project_path: *const []u8, icudtl_path: *const []u8) !void {
         const config: c.FlutterRendererConfig = c.FlutterRendererConfig{
-            .type = c.kOpenGL,
+            .type = c.kVuklan,
             .unnamed_0 = .{
-                .open_gl = c.FlutterOpenGLRendererConfig{
-                    .struct_size = @sizeOf(c.FlutterOpenGLRendererConfig),
-                    .make_current = make_current,
-                    .clear_current = clear_current,
-                    .present = present,
-                    .fbo_callback = fbo_callback,
-                    .make_resource_current = make_resource_current,
-                },
+                .vulkan = c.FlutterVulkanRendererConfig{},
             },
         };
         const alloc = std.heap.page_allocator;
@@ -133,42 +126,6 @@ pub const FlutterEmbedder = struct {
     }
 
     fn global_registry_remover(_: ?*anyopaque, _: ?*c.wl_registry, _: u32) callconv(.C) void {}
-
-    //TODO: OpenGL context setup
-    fn make_current(_: ?*anyopaque) callconv(.C) bool {
-        return true;
-    }
-
-    //TODO: Setup OpenGL context cleanup
-    fn clear_current(_: ?*anyopaque) callconv(.C) bool {
-        return true;
-    }
-
-    //TODO: WTF is a swap buffer?
-    fn present(_: ?*anyopaque) callconv(.C) bool {
-        return true;
-    }
-
-    //Framebuffer Object (FBO).
-    //I dont know what it's and in the example this just returns 0.
-    fn fbo_callback(_: ?*anyopaque) callconv(.C) u32 {
-        return 0;
-    }
-
-    //resource context setup. What in all hells is that?
-    fn make_resource_current(_: ?*anyopaque) callconv(.C) bool {
-        return true;
-    }
-
-    // fn gl_proc_resolver(_: [*c]const u8) callconv(.C) ?*const u8 {
-    //     // Your GL proc resolver here
-    //     return null;
-    // }
-
-    // Implement your surface presentation logic here
-    fn surface_present(_: ?*anyopaque, _: *anyopaque) callconv(.C) bool {
-        return true;
-    }
 };
 
 // *const fn (?*anyopaque, ?*cimport.struct_wl_registry, u32, [*c]const u8, u32) callconv(.C) void
