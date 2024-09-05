@@ -3,6 +3,7 @@ pub const c = @cImport({
     @cInclude("EGL/eglplatform.h");
     @cInclude("EGL/egl.h");
     @cInclude("EGL/eglext.h");
+    @cInclude("GL/gl.h");
     @cInclude("wayland-client.h");
     @cInclude("wlr-layer-shell-unstable-v1-client-protocol.h");
     @cInclude("flutter_embedder.h");

@@ -43,44 +43,65 @@ pub const WaylandManager = struct {
 
         if (self.layer_surface == null) return error.LayerSurfaceFailed;
 
-        c.zwlr_layer_surface_v1_set_exclusive_zone(self.layer_surface, 100);
-        c.zwlr_layer_surface_v1_set_size(self.layer_surface.?, 1280, 720);
+        const layer_listener = c.struct_zwlr_layer_surface_v1_listener{
+            .configure = configure,
+            .closed = closed,
+        };
+
+        _ = c.zwlr_layer_surface_v1_add_listener(self.layer_surface, &layer_listener, self);
+
+        c.zwlr_layer_surface_v1_set_size(self.layer_surface, 300, 300);
         c.zwlr_layer_surface_v1_set_anchor(
-            self.layer_surface.?,
+            self.layer_surface,
             c.ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP | c.ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT,
         );
-        c.wl_surface_commit(self.surface.?);
+
+        c.wl_surface_commit(self.surface);
     }
-
-    fn global_registry_handler(
-        data: ?*anyopaque,
-        registry: ?*c.struct_wl_registry,
-        name: u32,
-        iface: [*c]const u8,
-        version: u32,
-    ) callconv(.C) void {
-        const manager: *WaylandManager = @ptrCast(@alignCast(data));
-
-        if (std.mem.eql(u8, std.mem.span(iface), "wl_compositor")) {
-            manager.compositor = @ptrCast(
-                c.wl_registry_bind(
-                    registry,
-                    name,
-                    &c.wl_compositor_interface,
-                    version,
-                ),
-            );
-        } else if (std.mem.eql(u8, std.mem.span(iface), "zwlr_layer_shell_v1")) {
-            manager.layer_shell = @ptrCast(
-                c.wl_registry_bind(
-                    registry,
-                    name,
-                    &c.zwlr_layer_shell_v1_interface,
-                    version,
-                ),
-            );
-        }
-    }
-
-    fn global_registry_remover(_: ?*anyopaque, _: ?*c.wl_registry, _: u32) callconv(.C) void {}
 };
+
+fn global_registry_handler(
+    data: ?*anyopaque,
+    registry: ?*c.struct_wl_registry,
+    name: u32,
+    iface: [*c]const u8,
+    version: u32,
+) callconv(.C) void {
+    const manager: *WaylandManager = @ptrCast(@alignCast(data));
+    std.debug.print("EVENT: {s}\n", .{iface});
+    if (std.mem.eql(u8, std.mem.span(iface), "wl_compositor")) {
+        manager.compositor = @ptrCast(
+            c.wl_registry_bind(
+                registry,
+                name,
+                &c.wl_compositor_interface,
+                version,
+            ),
+        );
+    } else if (std.mem.eql(u8, std.mem.span(iface), "zwlr_layer_shell_v1")) {
+        manager.layer_shell = @ptrCast(
+            c.wl_registry_bind(
+                registry,
+                name,
+                &c.zwlr_layer_shell_v1_interface,
+                version,
+            ),
+        );
+    }
+}
+
+fn global_registry_remover(_: ?*anyopaque, _: ?*c.wl_registry, _: u32) callconv(.C) void {}
+
+fn configure(
+    _: ?*anyopaque,
+    surface: ?*c.struct_zwlr_layer_surface_v1,
+    serial: u32,
+    _: u32,
+    _: u32,
+) callconv(.C) void {
+    c.zwlr_layer_surface_v1_ack_configure(
+        surface,
+        serial,
+    );
+}
+fn closed(_: ?*anyopaque, _: ?*c.struct_zwlr_layer_surface_v1) callconv(.C) void {}

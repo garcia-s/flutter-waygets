@@ -1,14 +1,19 @@
 const std = @import("std");
 const c = @import("c_imports.zig").c;
+const FlutterEmbedder = @import("embedder.zig").FlutterEmbedder;
 //TODO: OpenGL context setup
 ///The parameter here is a pointer to what we passed as "user_data"
 ///which for now is the FlutterEmbedder instance
 pub const OpenGLManager = struct {
     display: c.EGLDisplay = null,
+    surface: c.EGLSurface = null,
     window: ?*c.struct_wl_egl_window = null,
-    context: ?*anyopaque = null,
-    config: ?*anyopaque = null,
-    surface: ?*anyopaque = null,
+    context: c.EGLContext = null,
+    config: c.EGLConfig = null,
+    ctx_attrib: [*c]c.EGLint = @constCast(&[_]c.EGLint{
+        c.EGL_CONTEXT_CLIENT_VERSION, 2,
+        c.EGL_NONE,
+    }),
 
     pub fn init(
         self: *OpenGLManager,
@@ -34,13 +39,12 @@ pub const OpenGLManager = struct {
             c.EGL_NONE,
         };
 
-        var config: c.EGLConfig = undefined;
         var num_config: c.EGLint = 0;
 
         if (c.eglChooseConfig(
             self.display.?,
             &config_attrib,
-            &config,
+            &self.config,
             1,
             &num_config,
         ) == c.EGL_FALSE) return error.EglChooseConfigFailed;
@@ -54,29 +58,27 @@ pub const OpenGLManager = struct {
             c.EGL_NONE,
         };
 
-        const egl_surface = c.eglCreatePlatformWindowSurface(
+        self.surface = c.eglCreatePlatformWindowSurface(
             self.display,
-            config,
+            self.config,
             self.window,
             &surface_attrib,
         );
 
-        const context_attribs = [_]c.EGLint{
-            c.EGL_CONTEXT_CLIENT_VERSION, 2, // OpenGL ES 2
-            c.EGL_NONE,
-        };
-
-        if (egl_surface == c.EGL_NO_SURFACE)
+        if (self.surface == c.EGL_NO_SURFACE)
             return error.EglSurfaceCreateFailed;
 
-        const context = c.eglCreateContext(
+        self.context = c.eglCreateContext(
             self.display,
-            config,
+            self.config,
             null,
-            &context_attribs,
+            self.ctx_attrib,
         );
 
-        if (context == c.EGL_NO_CONTEXT)
+        if (self.context == null)
+            return error.EglContextCreateFailed;
+
+        if (self.context == c.EGL_NO_CONTEXT)
             return error.EglContextCreateFailed;
     }
 
@@ -84,6 +86,7 @@ pub const OpenGLManager = struct {
         return .{
             .struct_size = @sizeOf(c.FlutterOpenGLRendererConfig),
             .make_current = make_current,
+            // .make_resource_current = make_resource_current,
             .clear_current = clear_current,
             .present = present,
             .fbo_callback = fbo_callback,
@@ -91,18 +94,55 @@ pub const OpenGLManager = struct {
         };
     }
 
-    fn make_current(_: ?*anyopaque) callconv(.C) bool {
-        // const embedder: *FlutterEmbedder = @ptrCast(@alignCast(data));
+    fn make_current(data: ?*anyopaque) callconv(.C) bool {
+        const embedder: *FlutterEmbedder = @ptrCast(@alignCast(data));
+        const result = c.eglMakeCurrent(
+            embedder.open_gl.display,
+            embedder.open_gl.surface,
+            embedder.open_gl.surface,
+            embedder.open_gl.context,
+        );
+        if (result == c.EGL_FALSE) return false;
         return true;
     }
 
     //TODO: Setup OpenGL context cleanup
-    fn clear_current(_: ?*anyopaque) callconv(.C) bool {
+    fn clear_current(data: ?*anyopaque) callconv(.C) bool {
+        const embedder: *FlutterEmbedder = @ptrCast(@alignCast(data));
+        const result = c.eglMakeCurrent(
+            embedder.open_gl.display,
+            embedder.open_gl.surface,
+            embedder.open_gl.surface,
+            embedder.open_gl.context,
+        );
+
+        if (result == c.EGL_FALSE) return false;
+
+        c.glClear(c.GL_COLOR_BUFFER_BIT | c.GL_DEPTH_BUFFER_BIT);
+
+        const err = c.glGetError();
+
+        if (err != c.GL_NO_ERROR) return false;
+
+        _ = c.eglSwapBuffers(
+            embedder.open_gl.display,
+            embedder.open_gl.surface,
+        );
+
         return true;
     }
 
     //TODO: WTF is a swap buffer?
-    fn present(_: ?*anyopaque) callconv(.C) bool {
+    fn present(data: ?*anyopaque) callconv(.C) bool {
+        const embedder: *FlutterEmbedder = @ptrCast(@alignCast(data));
+        const result = c.eglSwapBuffers(
+            embedder.open_gl.display,
+            embedder.open_gl.surface,
+        );
+
+        if (result == c.EGL_FALSE) {
+            return false;
+        }
         return true;
     }
 
@@ -112,14 +152,29 @@ pub const OpenGLManager = struct {
         return 0;
     }
 
-    //resource context setup. What in all hells is that?
-    // fn make_resource_current(_: ?*anyopaque) callconv(.C) bool {
-    //     return true;
-    // }
+    // resource context setup. What in all hells is that?
+    fn make_resource_current(data: ?*anyopaque) bool {
+        const embedder: *FlutterEmbedder = @ptrCast(@alignCast(data));
 
-    fn gl_proc_resolver(_: ?*anyopaque, _: [*c]const u8) callconv(.C) ?*anyopaque {
-        // Your GL proc resolver here
-        return null;
+        const resource: c.EGLContext = c.eglCreateContext(
+            embedder.open_gl.display,
+            embedder.open_gl.config,
+            embedder.open_gl.context,
+            embedder.open_gl.ctx_attrib,
+        );
+
+        if (resource == c.EGL_NO_CONTEXT) return false;
+
+        return true;
+    }
+
+    fn gl_proc_resolver(_: ?*anyopaque, proc_name: [*c]const u8) callconv(.C) ?*anyopaque {
+        const result: ?*anyopaque = @ptrCast(@constCast(
+            c.eglGetProcAddress(proc_name),
+        ));
+        //IDK if I can just return result here;
+        //Might be right but it feels wrong
+        return result;
     }
 
     // Implement your surface presentation logic here

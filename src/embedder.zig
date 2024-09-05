@@ -46,9 +46,7 @@ pub const FlutterEmbedder = struct {
         );
 
         while (true) {
-            if (c.wl_display_dispatch(self.wl.display) == -1) {
-                break;
-            }
+            _ = c.wl_display_dispatch(self.wl.display);
         }
     }
 };
