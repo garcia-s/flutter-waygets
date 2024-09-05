@@ -1,5 +1,7 @@
 zig-out
 .zig-*
 #Just compile them brah
-include/
+
+build
+.dart_tool
 
