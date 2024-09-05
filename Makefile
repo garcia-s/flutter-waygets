@@ -18,13 +18,17 @@ variant := host_debug_unopt
 
 
 run:
-	zig build
-	WAYLAND_DEBUG=1 ./zig-out/bin/flutter_embedder ./ ./include/icudtl.dat
+	zig build 
+	./zig-out/bin/flutter_embedder ./ ./include/icudtl.dat
+
+debug: 
+	gdb run 
 
 bundle: 
 	flutter pub add flutter_gpu --sdk=flutter
 	flutter build bundle
 	run
+
 clean:
 	rm -f $(HEADERS) $(SOURCES)
 
