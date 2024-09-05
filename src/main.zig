@@ -31,7 +31,7 @@ pub fn main() anyerror!void {
 
     _ = try embedder.init();
 
-    embedder.run(&project_path, &icudtl_path) catch {
+    embedder.run(project_path, icudtl_path) catch {
         std.debug.print("Error running Flutter embedder\n", .{});
     };
 }

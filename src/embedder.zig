@@ -63,7 +63,7 @@ pub const FlutterEmbedder = struct {
         c.wl_surface_commit(self.surface.?);
     }
 
-    pub fn run(self: *FlutterEmbedder, project_path: *const []u8, icudtl_path: *const []u8) !void {
+    pub fn run(self: *FlutterEmbedder, project_path: []u8, icudtl_path: []u8) !void {
         const config: c.FlutterRendererConfig = c.FlutterRendererConfig{
             .type = c.kOpenGL,
             .unnamed_0 = .{
@@ -84,6 +84,9 @@ pub const FlutterEmbedder = struct {
             .{ project_path, "/build/flutter_assets" },
         );
 
+        std.debug.print("ICUDTL {s}\n", .{project_path});
+        std.debug.print("PROJECT_PATH {s}\n", .{icudtl_path});
+
         const args = c.FlutterProjectArgs{
             .struct_size = @sizeOf(c.FlutterProjectArgs),
             .assets_path = @ptrCast(assets_path.ptr),
@@ -93,12 +96,11 @@ pub const FlutterEmbedder = struct {
         var engine: c.FlutterEngine = undefined;
 
         _ = c.FlutterEngineRun(
-            3,
-            @ptrCast(&config),
-            @ptrCast(&args),
-            //IS this any data I want to pass to it?
+            1,
+            &config,
+            &args,
             self,
-            @ptrCast(&engine),
+            &engine,
         );
 
         while (true) {
