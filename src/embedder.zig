@@ -2,12 +2,13 @@
 //
 const std = @import("std");
 const vulkan = @import("vulkan_config.zig");
-const opengl = @import("opengl_config.zig");
 
 const c = @cImport({
     @cInclude("wayland-client.h");
     @cInclude("flutter_embedder.h");
     @cInclude("wlr-layer-shell-unstable-v1-client-protocol.h");
+    @cInclude("EGL/egl.h");
+    @cInclude("EGL/eglext.h");
 });
 
 pub const FlutterEmbedder = struct {
@@ -19,7 +20,8 @@ pub const FlutterEmbedder = struct {
     layer_surface: ?*c.zwlr_layer_surface_v1 = null,
 
     pub fn init(self: *FlutterEmbedder) !void {
-        self.display = c.wl_display_connect(null);
+        self.display = c.wl_display_connect("wayland-1");
+
         if (self.display == null) return error.WaylandConnectionFailed;
 
         self.registry = c.wl_display_get_registry(self.display);
@@ -40,14 +42,15 @@ pub const FlutterEmbedder = struct {
         }
 
         self.surface = c.wl_compositor_create_surface(self.compositor.?);
-        if (self.surface == null) return error.SurfaceCreationFailed;
 
+        if (self.surface == null) return error.SurfaceCreationFailed;
+        std.debug.print("The embedder contains {?}\n", .{self});
         self.layer_surface = c.zwlr_layer_shell_v1_get_layer_surface(
             self.layer_shell.?,
             self.surface.?,
             null, // Output
             c.ZWLR_LAYER_SHELL_V1_LAYER_TOP,
-            "my_flutter_layer",
+            "flutter",
         );
 
         if (self.layer_surface == null) return error.LayerSurfaceFailed;
@@ -64,7 +67,14 @@ pub const FlutterEmbedder = struct {
         const config: c.FlutterRendererConfig = c.FlutterRendererConfig{
             .type = c.kOpenGL,
             .unnamed_0 = .{
-                .open_gl = opengl.FlutterOpenGLRendererConfig{},
+                .open_gl = c.FlutterOpenGLRendererConfig{
+                    .struct_size = @sizeOf(c.FlutterOpenGLRendererConfig),
+                    .make_current = make_current,
+                    .clear_current = clear_current,
+                    .present = present,
+                    .fbo_callback = fbo_callback,
+                    .gl_proc_resolver = gl_proc_resolver,
+                },
             },
         };
         const alloc = std.heap.page_allocator;
@@ -106,12 +116,13 @@ pub const FlutterEmbedder = struct {
         version: u32,
     ) callconv(.C) void {
         const embedder: *FlutterEmbedder = @ptrCast(@alignCast(data));
+
         if (std.mem.eql(u8, std.mem.span(iface), "wl_compositor")) {
             embedder.compositor = @ptrCast(
                 c.wl_registry_bind(
                     registry,
                     name,
-                    &[_]c.wl_interface{c.wl_compositor_interface},
+                    &c.wl_compositor_interface,
                     version,
                 ),
             );
@@ -120,7 +131,7 @@ pub const FlutterEmbedder = struct {
                 c.wl_registry_bind(
                     registry,
                     name,
-                    &[_]c.wl_interface{c.zwlr_layer_surface_v1_interface},
+                    &c.zwlr_layer_shell_v1_interface,
                     version,
                 ),
             );
@@ -130,12 +141,41 @@ pub const FlutterEmbedder = struct {
     fn global_registry_remover(_: ?*anyopaque, _: ?*c.wl_registry, _: u32) callconv(.C) void {}
 };
 
-// *const fn (?*anyopaque, ?*cimport.struct_wl_registry, u32, [*c]const u8, u32) callconv(.C) void
-// *const fn (?*anyopaque, ?*cimport.struct_wl_registry, u32, [*c]u8, u32) callconv(.C) void
-//
-// @ptrCast([*c]u32, @alignCast(@alignOf(*u32), surface.*.pixels));
+fn make_current(_: ?*anyopaque) callconv(.C) bool {
+    const display = c.eglGetDisplay(c.EGL_DEFAULT_DISPLAY);
+    if (display == c.EGL_NO_DISPLAY) {
+        std.debug.print("Failed to get the EGL display\n", .{});
+    }
+    return true;
+}
 
-// *const fn (?*anyopaque, ?*cimport.struct_wl_registry, u32) callconv(.C) void
-// *const fn (?*anyopaque, *cimport.struct_wl_registry, u32) void
-//
-// zwlr_layer_surface_v1_interface
+//TODO: Setup OpenGL context cleanup
+fn clear_current(_: ?*anyopaque) callconv(.C) bool {
+    return true;
+}
+
+//TODO: WTF is a swap buffer?
+fn present(_: ?*anyopaque) callconv(.C) bool {
+    return true;
+}
+
+//Framebuffer Object (FBO).
+//I dont know what it's and in the example this just returns 0.
+fn fbo_callback(_: ?*anyopaque) callconv(.C) u32 {
+    return 0;
+}
+
+//resource context setup. What in all hells is that?
+fn make_resource_current(_: ?*anyopaque) callconv(.C) bool {
+    return true;
+}
+
+fn gl_proc_resolver(_: ?*anyopaque, _: [*c]const u8) callconv(.C) ?*anyopaque {
+    // Your GL proc resolver here
+    return null;
+}
+
+// Implement your surface presentation logic here
+fn surface_present(_: ?*anyopaque, _: *anyopaque) callconv(.C) bool {
+    return true;
+}
