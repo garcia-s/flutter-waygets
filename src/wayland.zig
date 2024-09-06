@@ -13,9 +13,16 @@ pub const WaylandManager = struct {
     pub fn init(self: *WaylandManager) !void {
         self.display = c.wl_display_connect(null);
 
-        if (self.display == null) return error.WaylandConnectionFailed;
+        if (self.display == null) {
+            std.debug.print("Failed to get a wayland display\n", .{});
+            return error.WaylandConnectionFailed;
+        }
+
         self.registry = c.wl_display_get_registry(self.display);
-        if (self.registry == null) return error.RegistryFailed;
+        if (self.registry == null) {
+            std.debug.print("Failed to get the wayland registry\n", .{});
+            return error.RegistryFailed;
+        }
 
         const registry_listener = c.wl_registry_listener{
             .global = global_registry_handler,
@@ -28,12 +35,17 @@ pub const WaylandManager = struct {
         _ = c.wl_display_roundtrip(self.display);
 
         if (self.compositor == null or self.layer_shell == null) {
+            std.debug.print("Failed to initialize the wayland layer shell and/or compositor\n", .{});
             return error.MissingGlobalObjects;
         }
 
         self.surface = c.wl_compositor_create_surface(self.compositor.?);
 
-        if (self.surface == null) return error.SurfaceCreationFailed;
+        if (self.surface == null) {
+            std.debug.print("Failed to get a wayland surface\n", .{});
+            return error.SurfaceCreationFailed;
+        }
+
         self.layer_surface = c.zwlr_layer_shell_v1_get_layer_surface(
             self.layer_shell.?,
             self.surface.?,
@@ -42,7 +54,10 @@ pub const WaylandManager = struct {
             "flutter",
         );
 
-        if (self.layer_surface == null) return error.LayerSurfaceFailed;
+        if (self.layer_surface == null) {
+            std.debug.print("Failed to initialize a layer surface\n", .{});
+            return error.LayerSurfaceFailed;
+        }
 
         const layer_listener = c.struct_zwlr_layer_surface_v1_listener{
             .configure = configure,
@@ -52,11 +67,16 @@ pub const WaylandManager = struct {
         _ = c.zwlr_layer_surface_v1_add_listener(self.layer_surface, &layer_listener, self);
 
         c.zwlr_layer_surface_v1_set_size(self.layer_surface, 300, 300);
-
         c.zwlr_layer_surface_v1_set_anchor(
             self.layer_surface,
             c.ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP | c.ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT,
         );
+        c.wl_surface_commit(self.surface);
+
+        if (c.wl_display_dispatch(self.display) < 0) {
+            std.debug.print("Failed to dispatch the initial layer surface commit\n", .{});
+            return error.LayerSurfaceFailed;
+        }
     }
 };
 

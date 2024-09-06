@@ -46,13 +46,17 @@ pub const OpenGLManager = struct {
 
         var num_config: c.EGLint = 0;
 
-        if (c.eglChooseConfig(
+        const conf_result = c.eglChooseConfig(
             self.display.?,
             &config_attrib,
             &self.config,
             1,
             &num_config,
-        ) == c.EGL_FALSE) return error.EglChooseConfigFailed;
+        );
+
+        if (conf_result != c.EGL_FALSE) {
+            return error.EglChooseConfigFailed;
+        }
 
         //TODO: FIX HARDCODED WIDTH AND HEIGHT
         self.window = c.wl_egl_window_create(surface, 300, 300);
