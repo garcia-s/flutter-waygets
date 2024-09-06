@@ -1,5 +1,6 @@
 const std = @import("std");
 const c = @import("c_imports.zig").c;
+const FlutterEmbedder = @import("embedder.zig").FlutterEmbedder;
 
 pub const WaylandManager = struct {
     registry: ?*c.wl_registry = null,
@@ -10,7 +11,7 @@ pub const WaylandManager = struct {
     layer_surface: ?*c.zwlr_layer_surface_v1 = null,
 
     pub fn init(self: *WaylandManager) !void {
-        self.display = c.wl_display_connect("wayland-1");
+        self.display = c.wl_display_connect(null);
 
         if (self.display == null) return error.WaylandConnectionFailed;
         self.registry = c.wl_display_get_registry(self.display);
@@ -51,12 +52,11 @@ pub const WaylandManager = struct {
         _ = c.zwlr_layer_surface_v1_add_listener(self.layer_surface, &layer_listener, self);
 
         c.zwlr_layer_surface_v1_set_size(self.layer_surface, 300, 300);
+
         c.zwlr_layer_surface_v1_set_anchor(
             self.layer_surface,
             c.ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP | c.ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT,
         );
-
-        c.wl_surface_commit(self.surface);
     }
 };
 
@@ -68,7 +68,6 @@ fn global_registry_handler(
     version: u32,
 ) callconv(.C) void {
     const manager: *WaylandManager = @ptrCast(@alignCast(data));
-    std.debug.print("EVENT: {s}\n", .{iface});
     if (std.mem.eql(u8, std.mem.span(iface), "wl_compositor")) {
         manager.compositor = @ptrCast(
             c.wl_registry_bind(
@@ -99,6 +98,7 @@ fn configure(
     _: u32,
     _: u32,
 ) callconv(.C) void {
+    std.debug.print("Config Ack for surface created \n", .{});
     c.zwlr_layer_surface_v1_ack_configure(
         surface,
         serial,

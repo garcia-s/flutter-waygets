@@ -7,9 +7,11 @@ const FlutterEmbedder = @import("embedder.zig").FlutterEmbedder;
 pub const OpenGLManager = struct {
     display: c.EGLDisplay = null,
     surface: c.EGLSurface = null,
+    resource_surface: c.EGLSurface = null,
+    resource_context: c.EGLContext = null,
     window: ?*c.struct_wl_egl_window = null,
     context: c.EGLContext = null,
-    config: c.EGLConfig = null,
+    config: c.EGLConfig = undefined,
     ctx_attrib: [*c]c.EGLint = @constCast(&[_]c.EGLint{
         c.EGL_CONTEXT_CLIENT_VERSION, 2,
         c.EGL_NONE,
@@ -33,9 +35,12 @@ pub const OpenGLManager = struct {
 
         //WHAT DOES THIS DO?
         const config_attrib = [_]c.EGLint{
-            c.EGL_RED_SIZE,   8,
-            c.EGL_GREEN_SIZE, 8,
-            c.EGL_BLUE_SIZE,  8,
+            // c.EGL_RED_SIZE,        8,
+            // c.EGL_GREEN_SIZE,      8,
+            // c.EGL_BLUE_SIZE,       8,
+            // c.EGL_ALPHA_SIZE,      8,
+            // c.EGL_DEPTH_SIZE,      0,
+            // c.EGL_STENCIL_SIZE,    0,
             c.EGL_NONE,
         };
 
@@ -50,14 +55,38 @@ pub const OpenGLManager = struct {
         ) == c.EGL_FALSE) return error.EglChooseConfigFailed;
 
         //TODO: FIX HARDCODED WIDTH AND HEIGHT
-        self.window = c.wl_egl_window_create(surface, 1280, 720);
+        self.window = c.wl_egl_window_create(surface, 300, 300);
         if (self.window == null) return error.GetEglPlatformWindowFailed;
 
         //TODO: WHAT DOES THESE ATTRIBUTES DO?
-        const surface_attrib = [_]c.EGLAttrib{
+        //
+        const pbuf_attr = [_]c.EGLint{
+            c.EGL_HEIGHT, 300,
+            c.EGL_WIDTH,  300,
             c.EGL_NONE,
         };
 
+        self.resource_surface = c.eglCreatePbufferSurface(
+            self.display,
+            self.config,
+            &pbuf_attr,
+        );
+
+        if (self.resource_surface == c.EGL_NO_SURFACE)
+            return error.EglSurfaceCreateFailed;
+
+        self.resource_context = c.eglCreateContext(
+            self.display,
+            self.config,
+            null,
+            self.ctx_attrib,
+        );
+
+        if (self.resource_context == c.EGL_NO_CONTEXT)
+            return error.EglContextCreateFailed;
+        const surface_attrib = [_]c.EGLAttrib{
+            c.EGL_NONE,
+        };
         self.surface = c.eglCreatePlatformWindowSurface(
             self.display,
             self.config,
@@ -75,11 +104,10 @@ pub const OpenGLManager = struct {
             self.ctx_attrib,
         );
 
-        if (self.context == null)
-            return error.EglContextCreateFailed;
-
         if (self.context == c.EGL_NO_CONTEXT)
             return error.EglContextCreateFailed;
+
+        _ = c.glGetString(c.GL_VERSION);
     }
 
     pub fn get_flutter_renderer_config(_: *OpenGLManager) c.FlutterOpenGLRendererConfig {
@@ -102,7 +130,13 @@ pub const OpenGLManager = struct {
             embedder.open_gl.surface,
             embedder.open_gl.context,
         );
-        if (result == c.EGL_FALSE) return false;
+
+        if (result != c.EGL_TRUE) {
+            std.debug.print("ERROR MAKING THE SURFACE CONTEXT CURRENT: {x}\n", .{c.eglGetError()});
+            std.debug.print("OPENGL VALUES: {?}\n", .{embedder.open_gl.surface});
+            return false;
+        }
+
         return true;
     }
 
@@ -111,23 +145,15 @@ pub const OpenGLManager = struct {
         const embedder: *FlutterEmbedder = @ptrCast(@alignCast(data));
         const result = c.eglMakeCurrent(
             embedder.open_gl.display,
-            embedder.open_gl.surface,
-            embedder.open_gl.surface,
-            embedder.open_gl.context,
+            c.EGL_NO_SURFACE,
+            c.EGL_NO_SURFACE,
+            c.EGL_NO_CONTEXT,
         );
 
-        if (result == c.EGL_FALSE) return false;
-
-        c.glClear(c.GL_COLOR_BUFFER_BIT | c.GL_DEPTH_BUFFER_BIT);
-
-        const err = c.glGetError();
-
-        if (err != c.GL_NO_ERROR) return false;
-
-        _ = c.eglSwapBuffers(
-            embedder.open_gl.display,
-            embedder.open_gl.surface,
-        );
+        if (result != c.EGL_TRUE) {
+            std.debug.print("Error in EGL: {x}", .{c.eglGetError()});
+            return false;
+        }
 
         return true;
     }
@@ -140,9 +166,11 @@ pub const OpenGLManager = struct {
             embedder.open_gl.surface,
         );
 
-        if (result == c.EGL_FALSE) {
+        if (result != c.EGL_TRUE) {
+            std.debug.print("Error in EGL: {x}", .{c.eglGetError()});
             return false;
         }
+
         return true;
     }
 
@@ -153,28 +181,31 @@ pub const OpenGLManager = struct {
     }
 
     // resource context setup. What in all hells is that?
-    fn make_resource_current(data: ?*anyopaque) bool {
+    fn make_resource_current(data: ?*anyopaque) callconv(.C) bool {
         const embedder: *FlutterEmbedder = @ptrCast(@alignCast(data));
-
-        const resource: c.EGLContext = c.eglCreateContext(
+        const result = c.eglMakeCurrent(
             embedder.open_gl.display,
-            embedder.open_gl.config,
-            embedder.open_gl.context,
-            embedder.open_gl.ctx_attrib,
+            embedder.open_gl.surface,
+            embedder.open_gl.resource_surface,
+            embedder.open_gl.resource_context,
         );
 
-        if (resource == c.EGL_NO_CONTEXT) return false;
+        if (result == c.EGL_FALSE) {
+            std.debug.print("Error MAKING RESOURCE CURRENT: {x}", .{c.eglGetError()});
+            return false;
+        }
 
         return true;
     }
 
     fn gl_proc_resolver(_: ?*anyopaque, proc_name: [*c]const u8) callconv(.C) ?*anyopaque {
-        const result: ?*anyopaque = @ptrCast(@constCast(
-            c.eglGetProcAddress(proc_name),
-        ));
-        //IDK if I can just return result here;
-        //Might be right but it feels wrong
-        return result;
+        const result: ?*anyopaque = @ptrCast(
+            @constCast(c.eglGetProcAddress(proc_name)),
+        );
+        if (result != null) return result;
+
+        std.debug.print("Error resolving process name {x}", .{c.eglGetError()});
+        return null;
     }
 
     // Implement your surface presentation logic here

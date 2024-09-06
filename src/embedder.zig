@@ -11,7 +11,6 @@ pub const FlutterEmbedder = struct {
 
         //TODO: SHOULD CHECK IF PROJECT PATH AND ICUDTL IS VALID OTHERWISE
         //NONE OF THIS MAKES ANY SENSE
-
         try self.wl.init();
         try self.open_gl.init(self.wl.display, self.wl.surface);
 
@@ -45,8 +44,11 @@ pub const FlutterEmbedder = struct {
             &engine,
         );
 
+        std.debug.print("Starting the wayland loop", .{});
         while (true) {
-            _ = c.wl_display_dispatch(self.wl.display);
+            if (c.wl_display_dispatch(self.wl.display) == -1) {
+                std.debug.print("Unable to dispatch to wayland", .{});
+            }
         }
     }
 };

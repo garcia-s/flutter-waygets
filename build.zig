@@ -13,7 +13,7 @@ pub fn build(b: *std.Build) void {
     exe.addIncludePath(b.path(include_dir));
     exe.addLibraryPath(b.path("../linux-x64-embedder"));
     exe.addSystemIncludePath(b.path("../linux-x64-embedder"));
-    exe.linkSystemLibrary("GL");
+    exe.linkSystemLibrary("gl");
     exe.linkSystemLibrary("egl");
     exe.linkSystemLibrary("wayland-egl");
     exe.linkSystemLibrary("wayland-client");
