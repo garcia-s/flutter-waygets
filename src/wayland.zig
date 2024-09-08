@@ -5,13 +5,14 @@ const FlutterEmbedder = @import("embedder.zig").FlutterEmbedder;
 pub const WaylandManager = struct {
     registry: ?*c.wl_registry = null,
     layer_shell: ?*c.zwlr_layer_shell_v1 = null,
+    dummy_surface: ?*c.wl_surface = null,
     surface: ?*c.wl_surface = null,
     display: ?*c.wl_display = null,
     compositor: ?*c.wl_compositor = null,
     layer_surface: ?*c.zwlr_layer_surface_v1 = null,
 
     pub fn init(self: *WaylandManager) !void {
-        self.display = c.wl_display_connect(null);
+        self.display = c.wl_display_connect("wayland-1");
 
         if (self.display == null) {
             std.debug.print("Failed to get a wayland display\n", .{});
@@ -39,18 +40,24 @@ pub const WaylandManager = struct {
             return error.MissingGlobalObjects;
         }
 
-        self.surface = c.wl_compositor_create_surface(self.compositor.?);
+        self.surface = c.wl_compositor_create_surface(self.compositor);
 
         if (self.surface == null) {
             std.debug.print("Failed to get a wayland surface\n", .{});
             return error.SurfaceCreationFailed;
         }
 
+        self.dummy_surface = c.wl_compositor_create_surface(self.compositor);
+
+        if (self.surface == null) {
+            std.debug.print("Failed to get a wayland surface\n", .{});
+            return error.SurfaceCreationFailed;
+        }
         self.layer_surface = c.zwlr_layer_shell_v1_get_layer_surface(
-            self.layer_shell.?,
-            self.surface.?,
+            self.layer_shell,
+            self.surface,
             null, // Output
-            c.ZWLR_LAYER_SHELL_V1_LAYER_TOP,
+            c.ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY,
             "flutter",
         );
 
@@ -63,14 +70,17 @@ pub const WaylandManager = struct {
             .configure = configure,
             .closed = closed,
         };
-
         _ = c.zwlr_layer_surface_v1_add_listener(self.layer_surface, &layer_listener, self);
 
-        c.zwlr_layer_surface_v1_set_size(self.layer_surface, 300, 300);
         c.zwlr_layer_surface_v1_set_anchor(
             self.layer_surface,
-            c.ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP | c.ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT,
+            c.ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP |
+                c.ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT |
+                c.ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT |
+                c.ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM,
         );
+        _ = c.zwlr_layer_surface_v1_set_size(self.layer_surface, 1240, 720);
+
         c.wl_surface_commit(self.surface);
 
         if (c.wl_display_dispatch(self.display) < 0) {
@@ -118,10 +128,11 @@ fn configure(
     _: u32,
     _: u32,
 ) callconv(.C) void {
-    std.debug.print("Config Ack for surface created \n", .{});
     c.zwlr_layer_surface_v1_ack_configure(
         surface,
         serial,
     );
 }
-fn closed(_: ?*anyopaque, _: ?*c.struct_zwlr_layer_surface_v1) callconv(.C) void {}
+fn closed(_: ?*anyopaque, _: ?*c.struct_zwlr_layer_surface_v1) callconv(.C) void {
+    std.debug.print("Surface was closed \n", .{});
+}
