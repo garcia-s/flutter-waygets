@@ -1,6 +1,7 @@
 const std = @import("std");
 const wayland = @import("wayland.zig");
 const open_gl = @import("opengl_config.zig");
+const OpenGLRendererConfig = @import("opengl_flutter_config.zig").OpenGLRendererConfig;
 const c = @import("../c_imports.zig").c;
 
 pub const FlutterEngine = struct {
@@ -36,7 +37,7 @@ pub const FlutterEngine = struct {
         const config: c.FlutterRendererConfig = c.FlutterRendererConfig{
             .type = c.kOpenGL,
             .unnamed_0 = .{
-                .open_gl = open_gl.OpenGLRendererConfig,
+                .open_gl = OpenGLRendererConfig,
             },
         };
 
@@ -99,8 +100,6 @@ pub const FlutterEngine = struct {
             .display_id = 0,
             .view_id = 0,
         };
-
-        std.time.sleep(1000);
 
         while (true) {
             _ = c.FlutterEngineSendWindowMetricsEvent(self.engine, &event);
