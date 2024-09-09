@@ -65,12 +65,12 @@ pub const OpenGLManager = struct {
             return error.EglChooseConfigFailed;
         }
 
-        self.window = c.wl_egl_window_create(surface, 1240, 720);
+        self.window = c.wl_egl_window_create(surface, 1980, 100);
 
         if (self.window == null)
             return error.GetEglPlatformWindowFailed;
 
-        self.dummy_window = c.wl_egl_window_create(dummy, 1240, 720);
+        self.dummy_window = c.wl_egl_window_create(dummy, 1980, 100);
 
         if (self.dummy_window == null)
             return error.GetEglPlatformWindowFailed;
@@ -205,6 +205,7 @@ pub fn make_resource_current(data: ?*anyopaque) callconv(.C) bool {
         return false;
     }
     //
+
     return true;
 }
 

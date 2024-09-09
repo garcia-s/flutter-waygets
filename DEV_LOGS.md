@@ -1,34 +1,21 @@
+# 08-09-2024
 
-# Learning wayland
+I finally got flutter to work with my code, finally. Now there is A LOT of things I need to do. I don't know how to communicate between flutter and wayland stuff yet and I don't know if I want to create some sort of daemon to comunicate with the main interface.
 
-Ok now that I have the build pipeline sort of working and the linting working completely, I can now try to understand layer shell and flutter's embedder ABI, this is going to be hard, but I think I can manage to research and write some code
+## Things I need to figure out
 
+### Window system
 
-## Research about Wayland layer shell
+Can I create more than one window in flutter? If so, how would I control these windows and open them.
+Can I create this widgets in an easily incorporable way to just put a folder in some place and run it?
+I would love to have some sort of "plugin" (BAD WORD) to add some extra code with out having to completely compile everything from scratch,
+just adding another project to the folder and register.
 
-Things I think I know: 
+We want to share the same engine if possible to run multiple windows at the same time i guess, since the engine is pretty heavy. But will it be possible?
 
-- Wayland layer shell is not a standard, is something implemented by some compositors.
-- The wayland client still need to give you a real display for you to use the layer shell.
-- Rendering things is not handled by the server, it's actually handled by the client and then pixel data is sent to the server to display.
+I've noticed that when calling the FlutterEngineSendWindowMetricsEvent they specify a window_id as well as a display_id implying we can have more than one display and more than one
+### Passing control to dart
 
+### Damage Regions
 
-Things I need to research:
-
-
-- How to get the "wlr-layer-shell-unstable-v1-protocol.h"?
-
-Answer: Turns out, you don't "get" the damn file. You use something called "wayland-scanner" to generate the file, with the xml protocol definition. So there is NO FILE, you just need the xml and you generate at build time. I wish this was written somewhere in ALL CAPS and red lettering. I've spent all day looking for that damn file.
-
-Turns out you don't ONLY need the header file, you also need the generated C file.
-
-
-
-## Research about Flutter
-
-Things I think I know:
-Things I need to research:
-
-## Doubts about the software design
-
-One of my biggest concerns is, how do I manage multiple windows from flutter to the display? I don't want to create new widgets and force people to use them for the applets, and I also don't want to create daemon, but what would be a decent
+Incorporating damage regions wouldn't be the most complicated  thing in the world (famous last words) as I've already seen some code that does that, 

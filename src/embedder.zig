@@ -25,7 +25,6 @@ pub const FlutterEmbedder = struct {
         //     "--enable-impeller",
         // };
         // const argsv = try alloc.alloc([]u8, args.len);
-
         const engine_args = c.FlutterProjectArgs{
             .struct_size = @sizeOf(c.FlutterProjectArgs),
             .assets_path = @ptrCast(assets_path.ptr),
@@ -42,13 +41,28 @@ pub const FlutterEmbedder = struct {
         };
 
         //Then we bind to wayland
+        //
+        var current = std.time.milliTimestamp();
         try self.wl.init();
+
+        std.debug.print(
+            "Wayland init took: {} ms\n",
+            .{std.time.milliTimestamp() - current},
+        );
+        current = std.time.milliTimestamp();
+
         //Then we bind to opengl
         try self.open_gl.init(
             self.wl.display,
             self.wl.surface,
             self.wl.dummy_surface,
         );
+
+        std.debug.print(
+            "EGL init took: {} ms\n",
+            .{std.time.milliTimestamp() - current},
+        );
+        current = std.time.milliTimestamp();
 
         const result = c.FlutterEngineRun(
             1,
@@ -57,6 +71,12 @@ pub const FlutterEmbedder = struct {
             self,
             &self.engine,
         );
+
+        std.debug.print(
+            "Engine init took init took: {} ms\n",
+            .{std.time.milliTimestamp() - current},
+        );
+        current = std.time.milliTimestamp();
 
         if (result != c.kSuccess) {
             std.debug.print(
@@ -67,9 +87,9 @@ pub const FlutterEmbedder = struct {
         }
         const event = c.FlutterWindowMetricsEvent{
             .struct_size = @sizeOf(c.FlutterWindowMetricsEvent),
-            .width = 1240,
-            .height = 720,
-            .pixel_ratio = 10,
+            .width = 1980,
+            .height = 100,
+            .pixel_ratio = 1,
             .left = 0,
             .top = 0,
             .physical_view_inset_top = 0,
@@ -80,9 +100,26 @@ pub const FlutterEmbedder = struct {
             .view_id = 0,
         };
 
+        std.time.sleep(1000);
+
         while (true) {
             _ = c.FlutterEngineSendWindowMetricsEvent(self.engine, &event);
+            std.debug.print(
+                "Send render event took init took: {} ms\n",
+                .{std.time.milliTimestamp() - current},
+            );
+
             _ = c.wl_display_dispatch(self.wl.display);
+            current = std.time.milliTimestamp();
         }
     }
 };
+
+pub fn post_render(data: ?*anyopaque) callconv(.C) void {
+    const emb: *FlutterEmbedder = @ptrCast(@alignCast(data));
+    c.wl_surface_commit(emb.wl.surface);
+    _ = c.wl_display_dispatch(emb.wl.display);
+    std.debug.print("AFTER RENDER HOOK ENDED", .{});
+}
+
+// const FlutterTaskRunner = c.FlutterTaskRunner{};

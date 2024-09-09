@@ -57,7 +57,7 @@ pub const WaylandManager = struct {
             self.layer_shell,
             self.surface,
             null, // Output
-            c.ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY,
+            c.ZWLR_LAYER_SHELL_V1_LAYER_TOP,
             "flutter",
         );
 
@@ -70,17 +70,18 @@ pub const WaylandManager = struct {
             .configure = configure,
             .closed = closed,
         };
-        _ = c.zwlr_layer_surface_v1_add_listener(self.layer_surface, &layer_listener, self);
+        _ = c.zwlr_layer_surface_v1_add_listener(
+            self.layer_surface,
+            &layer_listener,
+            self,
+        );
 
         c.zwlr_layer_surface_v1_set_anchor(
             self.layer_surface,
-            c.ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP |
-                c.ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT |
-                c.ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT |
-                c.ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM,
+            c.ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP,
         );
-        _ = c.zwlr_layer_surface_v1_set_size(self.layer_surface, 1240, 720);
-
+        _ = c.zwlr_layer_surface_v1_set_size(self.layer_surface, 1280, 100);
+        _ = c.zwlr_layer_surface_v1_set_exclusive_zone(self.layer_surface, 100);
         c.wl_surface_commit(self.surface);
 
         if (c.wl_display_dispatch(self.display) < 0) {

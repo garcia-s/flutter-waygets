@@ -11,8 +11,8 @@ pub fn build(b: *std.Build) void {
 
     exe.linkLibC();
     exe.addIncludePath(b.path(include_dir));
-    exe.addLibraryPath(b.path("../src/out/host_debug_unopt"));
-    exe.addSystemIncludePath(b.path("../engine_unstripped"));
+    exe.addLibraryPath(b.path("../linux-x64-embedder"));
+    exe.addSystemIncludePath(b.path("../linux-x64-embedder"));
     exe.linkSystemLibrary("egl");
     exe.linkSystemLibrary("glesv2");
     exe.linkSystemLibrary("wayland-egl");
