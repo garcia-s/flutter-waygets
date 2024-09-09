@@ -1,9 +1,9 @@
 const std = @import("std");
-const c = @import("c_imports.zig").c;
-const FlutterEmbedder = @import("embedder.zig").FlutterEmbedder;
+const c = @import("../c_imports.zig").c;
+const FlutterEngine = @import("engine.zig").FlutterEngine;
 //TODO: OpenGL context setup
 ///The parameter here is a pointer to what we passed as "user_data"
-///which for now is the FlutterEmbedder instance
+///which for now is the FlutterEngine instance
 pub const OpenGLManager = struct {
     display: c.EGLDisplay = null,
     surface: c.EGLSurface = null,
@@ -132,7 +132,7 @@ pub const OpenGLRendererConfig = c.FlutterOpenGLRendererConfig{
 };
 
 pub fn make_current(data: ?*anyopaque) callconv(.C) bool {
-    const embedder: *FlutterEmbedder = @ptrCast(@alignCast(data));
+    const embedder: *FlutterEngine = @ptrCast(@alignCast(data));
 
     const result = c.eglMakeCurrent(
         embedder.open_gl.display,
@@ -150,7 +150,7 @@ pub fn make_current(data: ?*anyopaque) callconv(.C) bool {
 
 //TODO: Setup OpenGL context cleanup
 pub fn clear_current(data: ?*anyopaque) callconv(.C) bool {
-    const embedder: *FlutterEmbedder = @ptrCast(@alignCast(data));
+    const embedder: *FlutterEngine = @ptrCast(@alignCast(data));
 
     const result = c.eglMakeCurrent(
         embedder.open_gl.display,
@@ -169,7 +169,7 @@ pub fn clear_current(data: ?*anyopaque) callconv(.C) bool {
 
 //TODO: WTF is a swap buffer?
 pub fn present(data: ?*anyopaque) callconv(.C) bool {
-    const embedder: *FlutterEmbedder = @ptrCast(@alignCast(data));
+    const embedder: *FlutterEngine = @ptrCast(@alignCast(data));
 
     const result = c.eglSwapBuffers(
         embedder.open_gl.display,
@@ -190,7 +190,7 @@ pub fn fbo_callback(_: ?*anyopaque) callconv(.C) u32 {
 }
 // resource context setup. What in all hells is that?
 pub fn make_resource_current(data: ?*anyopaque) callconv(.C) bool {
-    const embedder: *FlutterEmbedder = @ptrCast(@alignCast(data));
+    const embedder: *FlutterEngine = @ptrCast(@alignCast(data));
 
     c.wl_surface_commit(embedder.wl.surface);
     const result = c.eglMakeCurrent(

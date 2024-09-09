@@ -1,6 +1,6 @@
 const std = @import("std");
-const c = @import("c_imports.zig").c;
-const FlutterEmbedder = @import("embedder.zig").FlutterEmbedder;
+const c = @import("../c_imports.zig").c;
+const FlutterEmbedder = @import("engine.zig").FlutterEmbedder;
 
 pub const WaylandManager = struct {
     registry: ?*c.wl_registry = null,

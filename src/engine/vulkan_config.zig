@@ -1,7 +1,9 @@
 const c = @cImport({
     @cInclude("flutter_embedder.h");
 });
-
+///TODO: IF ANY of the major compositors goes the vulkan route I'll love to implement this.
+///I think VULKAN is waaaay better but all of this compositors just use OpenGL,
+///so I'll not like some stuff Vulkan and some stuff opengl
 pub const FlutterVulkanRendererConfig = extern struct {
     /// The size of this struct. Must be sizeof(FlutterVulkanRendererConfig).
     struct_size: comptime_int,

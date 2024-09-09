@@ -1,14 +1,14 @@
 const std = @import("std");
 const wayland = @import("wayland.zig");
 const open_gl = @import("opengl_config.zig");
-const c = @import("c_imports.zig").c;
+const c = @import("../c_imports.zig").c;
 
-pub const FlutterEmbedder = struct {
+pub const FlutterEngine = struct {
     wl: wayland.WaylandManager = .{},
     open_gl: open_gl.OpenGLManager = .{},
     engine: c.FlutterEngine = null,
 
-    pub fn run(self: *FlutterEmbedder, args: [][]u8) !void {
+    pub fn run(self: *FlutterEngine, args: [][]u8) !void {
         //First we initialize the engine
         const alloc = std.heap.page_allocator;
 
@@ -22,8 +22,8 @@ pub const FlutterEmbedder = struct {
         //     "--trace-skia",
         //     "--debug",
         //     "--verbose",
-        //     "--enable-impeller",
         // };
+
         // const argsv = try alloc.alloc([]u8, args.len);
         const engine_args = c.FlutterProjectArgs{
             .struct_size = @sizeOf(c.FlutterProjectArgs),
@@ -114,12 +114,3 @@ pub const FlutterEmbedder = struct {
         }
     }
 };
-
-pub fn post_render(data: ?*anyopaque) callconv(.C) void {
-    const emb: *FlutterEmbedder = @ptrCast(@alignCast(data));
-    c.wl_surface_commit(emb.wl.surface);
-    _ = c.wl_display_dispatch(emb.wl.display);
-    std.debug.print("AFTER RENDER HOOK ENDED", .{});
-}
-
-// const FlutterTaskRunner = c.FlutterTaskRunner{};
