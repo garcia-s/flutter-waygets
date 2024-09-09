@@ -1,16 +1,17 @@
 const std = @import("std");
-const wayland = @import("wayland.zig");
-const open_gl = @import("opengl_config.zig");
+const wayland = @import("wayland_manager.zig");
+const open_gl = @import("opengl_window_manager.zig");
 const OpenGLRendererConfig = @import("opengl_flutter_config.zig").OpenGLRendererConfig;
 const c = @import("../c_imports.zig").c;
 
 pub const FlutterEngine = struct {
-    wl: wayland.WaylandManager = .{},
-    open_gl: open_gl.OpenGLManager = .{},
+    window: open_gl.OpenGLWindow = .{},
     engine: c.FlutterEngine = null,
 
     pub fn run(self: *FlutterEngine, args: [][]u8) !void {
+        const wl = try wayland.GetWLManager();
         //First we initialize the engine
+        //
         const alloc = std.heap.page_allocator;
 
         const assets_path = try std.fmt.allocPrint(
@@ -34,6 +35,8 @@ pub const FlutterEngine = struct {
             // .command_line_argc = @intCast(argsv.len),
         };
 
+        try self.window.init(wl);
+
         const config: c.FlutterRendererConfig = c.FlutterRendererConfig{
             .type = c.kOpenGL,
             .unnamed_0 = .{
@@ -41,28 +44,21 @@ pub const FlutterEngine = struct {
             },
         };
 
-        //Then we bind to wayland
-        //
         var current = std.time.milliTimestamp();
-        try self.wl.init();
 
         std.debug.print(
             "Wayland init took: {} ms\n",
             .{std.time.milliTimestamp() - current},
         );
+
         current = std.time.milliTimestamp();
 
         //Then we bind to opengl
-        try self.open_gl.init(
-            self.wl.display,
-            self.wl.surface,
-            self.wl.dummy_surface,
-        );
-
         std.debug.print(
             "EGL init took: {} ms\n",
             .{std.time.milliTimestamp() - current},
         );
+
         current = std.time.milliTimestamp();
 
         const result = c.FlutterEngineRun(
@@ -108,8 +104,13 @@ pub const FlutterEngine = struct {
                 .{std.time.milliTimestamp() - current},
             );
 
-            _ = c.wl_display_dispatch(self.wl.display);
+            _ = c.wl_display_dispatch(wl.wl_display);
             current = std.time.milliTimestamp();
         }
     }
+};
+
+const EngineWindowConfig = struct {
+    width: usize,
+    height: usize,
 };

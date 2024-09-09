@@ -1,5 +1,5 @@
 const c = @import("../c_imports.zig").c;
-const FlutterEngine = @import("engine.zig").FlutterEngine;
+const OpenGLWindow = @import("opengl_window_manager.zig").OpenGLWindow;
 const std = @import("std");
 
 //See, none of this uses ANYTHING other than the window info, none of it uses any wayland
@@ -16,13 +16,13 @@ pub const OpenGLRendererConfig = c.FlutterOpenGLRendererConfig{
 };
 
 pub fn make_current(data: ?*anyopaque) callconv(.C) bool {
-    const embedder: *FlutterEngine = @ptrCast(@alignCast(data));
+    const window: *OpenGLWindow = @ptrCast(@alignCast(data));
 
     const result = c.eglMakeCurrent(
-        embedder.open_gl.display,
-        embedder.open_gl.surface,
-        embedder.open_gl.surface,
-        embedder.open_gl.context,
+        window.display,
+        window.surface,
+        window.surface,
+        window.context,
     );
 
     if (result != c.EGL_TRUE) {
@@ -33,10 +33,10 @@ pub fn make_current(data: ?*anyopaque) callconv(.C) bool {
 }
 
 pub fn clear_current(data: ?*anyopaque) callconv(.C) bool {
-    const embedder: *FlutterEngine = @ptrCast(@alignCast(data));
+    const window: *OpenGLWindow = @ptrCast(@alignCast(data));
 
     const result = c.eglMakeCurrent(
-        embedder.open_gl.display,
+        window.display,
         c.EGL_NO_SURFACE,
         c.EGL_NO_SURFACE,
         c.EGL_NO_CONTEXT,
@@ -50,11 +50,11 @@ pub fn clear_current(data: ?*anyopaque) callconv(.C) bool {
 }
 
 pub fn present(data: ?*anyopaque) callconv(.C) bool {
-    const embedder: *FlutterEngine = @ptrCast(@alignCast(data));
+    const window: *OpenGLWindow = @ptrCast(@alignCast(data));
 
     const result = c.eglSwapBuffers(
-        embedder.open_gl.display,
-        embedder.open_gl.surface,
+        window.display,
+        window.surface,
     );
 
     if (result != c.EGL_TRUE) {
@@ -70,14 +70,13 @@ pub fn fbo_callback(_: ?*anyopaque) callconv(.C) u32 {
 }
 // resource context setup.
 pub fn make_resource_current(data: ?*anyopaque) callconv(.C) bool {
-    const embedder: *FlutterEngine = @ptrCast(@alignCast(data));
+    const window: *OpenGLWindow = @ptrCast(@alignCast(data));
 
-    c.wl_surface_commit(embedder.wl.surface);
     const result = c.eglMakeCurrent(
-        embedder.open_gl.display,
-        embedder.open_gl.resource_surface,
-        embedder.open_gl.resource_surface,
-        embedder.open_gl.resource_context,
+        window.display,
+        window.resource_surface,
+        window.resource_surface,
+        window.resource_context,
     );
 
     if (result == c.EGL_FALSE) {
