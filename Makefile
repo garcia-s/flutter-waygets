@@ -18,13 +18,10 @@ $(INCLUDE_DIR)/%-client-protocol.h: $(PROTOCOLS_DIR)/%.xml
 $(INCLUDE_DIR)/%-protocol.c: $(PROTOCOLS_DIR)/%.xml
 	wayland-scanner private-code $< $@
 
+
 bundle: 
-	
-	flutter pub add flutter_gpu --sdk=flutter
-	flutter --verbose build bundle --debug \
-			--local-engine-src-path ../src \
-			--local-engine=host_debug_unopt \
-			--local-engine-host=host_debug_unopt  
+	flutter --verbose build bundle
+
 
 
 embedder:

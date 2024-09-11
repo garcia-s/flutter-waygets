@@ -1,5 +1,5 @@
 const std = @import("std");
-const FlutterEngine = @import("engine/engine.zig").FlutterEngine;
+const YaraEngine = @import("engine/engine.zig").YaraEngine;
 
 pub fn main() anyerror!void {
     const alloc = std.heap.page_allocator;
@@ -9,7 +9,7 @@ pub fn main() anyerror!void {
         return error.InvalidArguments;
     }
 
-    var engine = FlutterEngine{};
+    var engine = YaraEngine{};
     engine.run(args) catch |err| {
         std.debug.print("Error running Flutter embedder: {?}\n ", .{err});
     };
