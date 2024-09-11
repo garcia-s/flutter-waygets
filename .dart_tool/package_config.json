@@ -50,12 +50,6 @@
       "languageVersion": "3.3"
     },
     {
-      "name": "flutter_gpu",
-      "rootUri": "file:///home/symmetry/dev/flutter/bin/cache/pkg/flutter_gpu",
-      "packageUri": "lib/",
-      "languageVersion": "3.2"
-    },
-    {
       "name": "flutter_lints",
       "rootUri": "file:///home/symmetry/.pub-cache/hosted/pub.dev/flutter_lints-4.0.0",
       "packageUri": "lib/",
@@ -176,7 +170,7 @@
       "languageVersion": "3.5"
     }
   ],
-  "generated": "2024-09-09T19:06:24.174590Z",
+  "generated": "2024-09-11T00:15:22.285799Z",
   "generator": "pub",
   "generatorVersion": "3.5.2",
   "flutterRoot": "file:///home/symmetry/dev/flutter",

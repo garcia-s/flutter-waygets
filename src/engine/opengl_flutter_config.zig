@@ -1,5 +1,5 @@
 const c = @import("../c_imports.zig").c;
-const OpenGLWindow = @import("opengl_window_manager.zig").OpenGLWindow;
+const EGLWindow = @import("egl_window.zig").EGLWindow;
 const std = @import("std");
 
 //See, none of this uses ANYTHING other than the window info, none of it uses any wayland
@@ -16,7 +16,7 @@ pub const OpenGLRendererConfig = c.FlutterOpenGLRendererConfig{
 };
 
 pub fn make_current(data: ?*anyopaque) callconv(.C) bool {
-    const window: *OpenGLWindow = @ptrCast(@alignCast(data));
+    const window: *EGLWindow = @ptrCast(@alignCast(data));
 
     const result = c.eglMakeCurrent(
         window.display,
@@ -33,7 +33,7 @@ pub fn make_current(data: ?*anyopaque) callconv(.C) bool {
 }
 
 pub fn clear_current(data: ?*anyopaque) callconv(.C) bool {
-    const window: *OpenGLWindow = @ptrCast(@alignCast(data));
+    const window: *EGLWindow = @ptrCast(@alignCast(data));
 
     const result = c.eglMakeCurrent(
         window.display,
@@ -50,7 +50,7 @@ pub fn clear_current(data: ?*anyopaque) callconv(.C) bool {
 }
 
 pub fn present(data: ?*anyopaque) callconv(.C) bool {
-    const window: *OpenGLWindow = @ptrCast(@alignCast(data));
+    const window: *EGLWindow = @ptrCast(@alignCast(data));
 
     const result = c.eglSwapBuffers(
         window.display,
@@ -70,7 +70,7 @@ pub fn fbo_callback(_: ?*anyopaque) callconv(.C) u32 {
 }
 // resource context setup.
 pub fn make_resource_current(data: ?*anyopaque) callconv(.C) bool {
-    const window: *OpenGLWindow = @ptrCast(@alignCast(data));
+    const window: *EGLWindow = @ptrCast(@alignCast(data));
 
     const result = c.eglMakeCurrent(
         window.display,

@@ -62,11 +62,6 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
-  flutter_gpu:
-    dependency: "direct main"
-    description: flutter
-    source: sdk
-    version: "0.0.0"
   flutter_lints:
     dependency: "direct dev"
     description:
@@ -214,5 +209,5 @@ packages:
     source: hosted
     version: "14.2.5"
 sdks:
-  dart: ">=3.5.0 <4.0.0"
+  dart: ">=3.5.2 <4.0.0"
   flutter: ">=3.18.0-18.0.pre.54"
