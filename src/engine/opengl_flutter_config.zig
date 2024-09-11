@@ -17,6 +17,9 @@ pub const OpenGLRendererConfig = c.FlutterOpenGLRendererConfig{
 
 pub fn make_current(data: ?*anyopaque) callconv(.C) bool {
     const window: *EGLWindow = @ptrCast(@alignCast(data));
+    std.debug.print("RUNNING MAKE CURRENT\n", .{});
+    window.mux.lock();
+    defer window.mux.unlock();
 
     const result = c.eglMakeCurrent(
         window.display,
@@ -33,7 +36,11 @@ pub fn make_current(data: ?*anyopaque) callconv(.C) bool {
 }
 
 pub fn clear_current(data: ?*anyopaque) callconv(.C) bool {
+    std.debug.print("RUNNING CLEAR CURRENT\n", .{});
+
     const window: *EGLWindow = @ptrCast(@alignCast(data));
+    window.mux.lock();
+    defer window.mux.unlock();
 
     const result = c.eglMakeCurrent(
         window.display,
@@ -44,13 +51,15 @@ pub fn clear_current(data: ?*anyopaque) callconv(.C) bool {
 
     if (result != c.EGL_TRUE) {
         std.debug.print("Error in EGL: {x}\n", .{c.eglGetError()});
-        return false;
+        return true;
     }
     return true;
 }
 
 pub fn present(data: ?*anyopaque) callconv(.C) bool {
     const window: *EGLWindow = @ptrCast(@alignCast(data));
+    window.mux.lock();
+    defer window.mux.unlock();
 
     const result = c.eglSwapBuffers(
         window.display,
@@ -70,7 +79,11 @@ pub fn fbo_callback(_: ?*anyopaque) callconv(.C) u32 {
 }
 // resource context setup.
 pub fn make_resource_current(data: ?*anyopaque) callconv(.C) bool {
+    std.debug.print("RUNNING RESOURCE CURRENT\n", .{});
     const window: *EGLWindow = @ptrCast(@alignCast(data));
+
+    window.mux.lock();
+    defer window.mux.unlock();
 
     const result = c.eglMakeCurrent(
         window.display,
@@ -88,6 +101,7 @@ pub fn make_resource_current(data: ?*anyopaque) callconv(.C) bool {
 }
 
 pub fn gl_proc_resolver(_: ?*anyopaque, proc_name: [*c]const u8) callconv(.C) ?*anyopaque {
+    std.debug.print("RUNNING PROC\n", .{});
     const result: ?*anyopaque = @ptrCast(@constCast(
         c.eglGetProcAddress(proc_name),
     ));

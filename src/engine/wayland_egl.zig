@@ -1,6 +1,18 @@
 const c = @import("../c_imports.zig").c;
 const std = @import("std");
 
+const config_attrib = [_]c.EGLint{
+    c.EGL_RENDERABLE_TYPE, c.EGL_OPENGL_ES2_BIT,
+    c.EGL_SURFACE_TYPE,    c.EGL_WINDOW_BIT,
+    c.EGL_RED_SIZE,        8,
+    c.EGL_GREEN_SIZE,      8,
+    c.EGL_BLUE_SIZE,       8,
+    c.EGL_ALPHA_SIZE,      8,
+    c.EGL_DEPTH_SIZE,      0,
+    c.EGL_STENCIL_SIZE,    8,
+    c.EGL_NONE,
+};
+
 pub const WaylandEGL = struct {
     display: c.EGLDisplay = null,
     config: c.EGLConfig = null,
@@ -19,18 +31,6 @@ pub const WaylandEGL = struct {
         if (c.eglBindAPI(c.EGL_OPENGL_ES_API) != c.EGL_TRUE) {
             return error.eglbindfailed;
         }
-
-        const config_attrib = [_]c.EGLint{
-            c.EGL_RENDERABLE_TYPE, c.EGL_OPENGL_ES2_BIT,
-            c.EGL_SURFACE_TYPE,    c.EGL_WINDOW_BIT,
-            c.EGL_RED_SIZE,        8,
-            c.EGL_GREEN_SIZE,      8,
-            c.EGL_BLUE_SIZE,       8,
-            c.EGL_ALPHA_SIZE,      8,
-            c.EGL_DEPTH_SIZE,      0,
-            c.EGL_STENCIL_SIZE,    8,
-            c.EGL_NONE,
-        };
 
         var num_config: c.EGLint = 0;
 

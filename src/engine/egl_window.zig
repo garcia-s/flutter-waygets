@@ -1,5 +1,6 @@
 const std = @import("std");
 const c = @import("../c_imports.zig").c;
+const WindowState = @import("window_state.zig").WindowState;
 
 //TODO: OpenGL context setup The parameter here is
 //a pointer to what we passed as "user_data"
@@ -10,19 +11,15 @@ const ctx_attrib: [*c]c.EGLint = @constCast(&[_]c.EGLint{
     c.EGL_NONE,
 });
 
-pub const WindowConfig = struct {
-    width: usize,
-    height: usize,
-};
-
 pub const EGLWindow = struct {
+    state: WindowState = undefined,
+    mux: std.Thread.Mutex = std.Thread.Mutex{},
     //Wayland stuff
     wl_surface: *c.wl_surface = undefined,
     wl_layer_surface: *c.zwlr_layer_surface_v1 = undefined,
     wl_dummy_surface: *c.wl_surface = undefined,
 
     ///Window stuff
-    engine: c.FlutterEngine = null,
     window: *c.struct_wl_egl_window = undefined,
     display: c.EGLDisplay = null,
     surface: c.EGLSurface = null,
@@ -39,7 +36,12 @@ pub const EGLWindow = struct {
         wl_layer_shell: *c.struct_zwlr_layer_shell_v1,
         egldisplay: c.EGLDisplay,
         config: c.EGLConfig,
+        state: WindowState,
     ) !void {
+        self.mux.lock();
+        defer self.mux.unlock();
+
+        self.state = state;
         self.display = egldisplay;
 
         self.wl_surface = c.wl_compositor_create_surface(wl_compositor) orelse {
@@ -77,27 +79,34 @@ pub const EGLWindow = struct {
         //Pass it as configs
         c.zwlr_layer_surface_v1_set_anchor(
             self.wl_layer_surface,
-            c.ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT | c.ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT,
+            c.ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT,
         );
 
         //Pass it as configs
-        _ = c.zwlr_layer_surface_v1_set_size(self.wl_layer_surface, 500, 1080);
-        _ = c.zwlr_layer_surface_v1_set_exclusive_zone(self.wl_layer_surface, 500);
+        _ = c.zwlr_layer_surface_v1_set_size(
+            self.wl_layer_surface,
+            state.width,
+            state.height,
+        );
+        _ = c.zwlr_layer_surface_v1_set_exclusive_zone(
+            self.wl_layer_surface,
+            @intCast(state.width),
+        );
 
         c.wl_surface_commit(self.wl_surface);
 
         self.window = c.wl_egl_window_create(
             self.wl_surface,
-            500,
-            1080,
+            @intCast(state.width),
+            @intCast(state.height),
         ) orelse {
             return error.GetEglPlatformWindowFailed;
         };
 
         self.dummy_window = c.wl_egl_window_create(
             self.dummy_surface,
-            500,
-            1080,
+            @intCast(state.width),
+            @intCast(state.height),
         ) orelse {
             return error.GetEglPlatformWindowFailed;
         };
@@ -146,6 +155,24 @@ pub const EGLWindow = struct {
             return error.LayerSurfaceFailed;
         }
     }
+
+    pub fn destroy(self: *EGLWindow) !void {
+        self.mux.lock();
+        defer self.mux.unlock();
+
+        _ = c.eglDestroySurface(self.display, self.surface);
+        _ = c.eglDestroySurface(self.display, self.resource_surface);
+
+        _ = c.eglDestroyContext(self.display, self.resource_context);
+        _ = c.eglDestroyContext(self.display, self.resource_context);
+
+        _ = c.wl_egl_window_destroy(self.window);
+        _ = c.wl_egl_window_destroy(self.dummy_window);
+
+        _ = c.zwlr_layer_surface_v1_destroy(self.wl_layer_surface);
+        //
+        _ = c.wl_surface_destroy(self.wl_surface);
+    }
 };
 
 fn configure(
@@ -155,6 +182,7 @@ fn configure(
     _: u32,
     _: u32,
 ) callconv(.C) void {
+    std.debug.print("RETURNING LAYER ACK\n", .{});
     c.zwlr_layer_surface_v1_ack_configure(
         surface,
         serial,

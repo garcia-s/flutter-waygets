@@ -20,15 +20,13 @@ $(INCLUDE_DIR)/%-protocol.c: $(PROTOCOLS_DIR)/%.xml
 
 
 bundle: 
-	flutter --verbose build bundle
-
-
+	cd widgets/status_bar && flutter build bundle
 
 embedder:
-	zig build -- -fsanitize=thread
+	zig build -- 
 
 run:
-	./zig-out/bin/flutter_embedder ./ ./include/icudtl.dat
+	./zig-out/bin/flutter_embedder ./widgets/status_bar/ ./include/icudtl.dat
 
 dev: bundle embedder run
 

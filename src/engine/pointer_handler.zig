@@ -22,7 +22,6 @@ pub fn pointer_enter_handler(
 ) callconv(.C) void {
     const state: *InputState = @ptrCast(@alignCast(data));
     state.mouse_focused = surface.?;
-    std.debug.print("Entered surface", .{});
 }
 fn frame_handler(_: ?*anyopaque, _: ?*c.struct_wl_pointer) callconv(.C) void {}
 
@@ -45,7 +44,6 @@ pub fn pointer_motion_handler(
 
     var event = &state.pointer_ev;
 
-    std.debug.print("Not sendin event {?}\n", .{state.pointer_ev});
     event.x = c.wl_fixed_to_double(x);
     event.y = c.wl_fixed_to_double(y);
 

@@ -46,7 +46,7 @@ fn global_registry_handler(
                 registry,
                 name,
                 &c.wl_seat_interface,
-                version,
+                3,
             ),
         );
         return;

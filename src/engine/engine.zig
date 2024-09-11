@@ -3,13 +3,13 @@ const c = @import("../c_imports.zig").c;
 const WaylandEGL = @import("wayland_egl.zig").WaylandEGL;
 const EGLWindow = @import("egl_window.zig").EGLWindow;
 const InputState = @import("input_state.zig").InputState;
+const WindowState = @import("window_state.zig").WindowState;
+const OpenGLRendererConfig = @import("opengl_flutter_config.zig").OpenGLRendererConfig;
 const EngineHash = @import("utils.zig").EngineHash;
 const keyboard_listener = @import("keyboard_handler.zig").keyboard_listener;
-
 const wl_handler = @import("wayland_registry_handler.zig").wl_listener;
 const pointer_listener = @import("pointer_handler.zig").pointer_listener;
-// const keyboard_listener = @import("wayland_registry_handler.zig").keyboard_listener;
-const OpenGLRendererConfig = @import("opengl_flutter_config.zig").OpenGLRendererConfig;
+const create_task_runner = @import("experimental_task_runner.zig").create_task_runner_description;
 
 pub const YaraEngine = struct {
     input_state: InputState = InputState{},
@@ -32,13 +32,18 @@ pub const YaraEngine = struct {
         //Create the engines goodies
 
         var window = EGLWindow{};
-        std.debug.print("What is layer {?}", .{self.wl_layer_shell});
+
         try window.init(
             self.wl_display,
             self.wl_compositor,
             self.wl_layer_shell,
             self.egl.display,
             self.egl.config,
+            WindowState{
+                .width = 500,
+                .height = 1080,
+                .closed = false,
+            },
         );
 
         const alloc = std.heap.page_allocator;
@@ -66,6 +71,7 @@ pub const YaraEngine = struct {
             .struct_size = @sizeOf(c.FlutterProjectArgs),
             .assets_path = @ptrCast(assets_path.ptr),
             .aot_data = aot_out,
+            .custom_task_runners = &FlutterCustomTaskRunners,
             // .command_line_argv = @ptrCast(&argsv),
             // .command_line_argc = @intCast(argsv.len),
         };
@@ -106,12 +112,39 @@ pub const YaraEngine = struct {
             .view_id = 0,
         };
 
-        while (true) {
-            //TODO: SHOULD BE A FOR LOOP
-            _ = c.FlutterEngineSendWindowMetricsEvent(self.engines[0], &event);
-            _ = c.wl_display_dispatch(self.wl_display);
+        _ = c.FlutterEngineSendWindowMetricsEvent(self.engines[0], &event);
+        // while (true) {
+        //
+        _ = c.wl_display_dispatch(self.wl_display);
+        std.debug.print("Initial Dispatch\n", .{});
 
-            std.time.sleep(1000 * 1000);
+        std.time.sleep(2 * 1000 * 1000 * 1000);
+        try window.destroy();
+        _ = c.FlutterEngineNotifyLowMemoryWarning(self.engines[0]);
+
+        std.time.sleep(2 * 1000 * 1000 * 1000);
+        std.debug.print("Re-INIT\n", .{});
+        try window.init(
+            self.wl_display,
+            self.wl_compositor,
+            self.wl_layer_shell,
+            self.egl.display,
+            self.egl.config,
+            WindowState{
+                .width = 500,
+                .height = 1080,
+                .closed = false,
+            },
+        );
+
+        std.debug.print("Re-INIT\n", .{});
+        _ = c.FlutterEngineScheduleFrame(self.engines[0]);
+        _ = c.wl_display_dispatch(self.wl_display);
+
+        std.debug.print("Dispatched \n", .{});
+        while (true) {
+            _ = c.wl_display_dispatch(self.wl_display);
+            std.debug.print("Dispatched \n", .{});
         }
     }
 
@@ -163,13 +196,14 @@ pub const YaraEngine = struct {
 
         _ = c.wl_keyboard_add_listener(
             keyboard,
-            keyboard_listener,
-            self.input_state,
+            &keyboard_listener,
+            &self.input_state,
         );
     }
 };
 
-const EngineWindowConfig = struct {
-    width: usize,
-    height: usize,
+pub const FlutterCustomTaskRunners = c.FlutterCustomTaskRunners{
+    .struct_size = @sizeOf(c.FlutterCustomTaskRunners),
+    .platform_task_runner = &create_task_runner(),
+    .render_task_runner = &create_task_runner(),
 };
