@@ -4,6 +4,7 @@ const WaylandEGL = @import("wayland_egl.zig").WaylandEGL;
 const EGLWindow = @import("egl_window.zig").EGLWindow;
 const InputState = @import("input_state.zig").InputState;
 const EngineHash = @import("utils.zig").EngineHash;
+const keyboard_listener = @import("keyboard_handler.zig").keyboard_listener;
 
 const wl_handler = @import("wayland_registry_handler.zig").wl_listener;
 const pointer_listener = @import("pointer_handler.zig").pointer_listener;
@@ -104,10 +105,13 @@ pub const YaraEngine = struct {
             .display_id = 0,
             .view_id = 0,
         };
+
         while (true) {
             //TODO: SHOULD BE A FOR LOOP
             _ = c.FlutterEngineSendWindowMetricsEvent(self.engines[0], &event);
             _ = c.wl_display_dispatch(self.wl_display);
+
+            std.time.sleep(1000 * 1000);
         }
     }
 
@@ -152,8 +156,16 @@ pub const YaraEngine = struct {
             &self.input_state,
         );
 
-        // const keyboard_listener = @import("wayland_registry_handler.zig").keyboard_listener;
-        // const keyboard = c.wl_seat_get_keyboard(self.wl_seat);
+        const keyboard = c.wl_seat_get_keyboard(self.wl_seat) orelse {
+            std.debug.print("Failed to retrieve a pointer", .{});
+            return error.ErrorRetrievingPointer;
+        };
+
+        _ = c.wl_keyboard_add_listener(
+            keyboard,
+            keyboard_listener,
+            self.input_state,
+        );
     }
 };
 

@@ -11,52 +11,49 @@ const keyboard_listener = c.wl_keyboard_listener{
 
 // Keyboard event handlers
 fn keyboard_keymap_handler(
-    keyboard: *c.wl_keyboard,
-    format: u32,
-    fd: i32,
-    size: u32,
-    data: *anyopaque,
+    _: *c.wl_keyboard,
+    _: u32,
+    _: i32,
+    _: u32,
+    _: *anyopaque,
 ) void {}
 
 fn keyboard_enter_handler(
-    keyboard: *c.wl_keyboard,
-    serial: u32,
-    surface: *c.wl_surface,
-    keys: [*:0]const u32,
-    data: *anyopaque,
+    _: *c.wl_keyboard,
+    _: u32,
+    _: *c.wl_surface,
+    _: u32,
+    _: *anyopaque,
 ) void {
     std.debug.print("Keyboard focus entered\n", .{});
 }
 
 fn keyboard_leave_handler(
-    keyboard: *c.wl_keyboard,
-    surface: *c.wl_surface,
-    serial: u32,
-    data: *anyopaque,
+    _: *c.wl_keyboard,
+    _: *c.wl_surface,
+    _: u32,
+    _: *anyopaque,
 ) void {
     std.debug.print("Keyboard focus left\n", .{});
 }
 
 fn keyboard_key_handler(
-    keyboard: *c.wl_keyboard,
-    serial: u32,
-    time: u32,
-    key: u32,
-    state: u32,
-    data: *anyopaque,
-) void {
-    const action = if (state == c.WL_KEYBOARD_KEY_STATE_PRESSED) "pressed" else "released";
-    std.debug.print("Key {} {}\n", .{ key, action });
-}
+    _: *c.wl_keyboard,
+    _: u32,
+    _: u32,
+    _: u32,
+    _: u32,
+    _: *anyopaque,
+) void {}
 
 fn keyboard_modifiers_handler(
-    keyboard: *c.wl_keyboard,
-    serial: u32,
-    mods_depressed: u32,
-    mods_latched: u32,
-    mods_locked: u32,
-    group: u32,
-    data: *anyopaque,
+    _: *c.wl_keyboard,
+    _: u32,
+    _: u32,
+    _: u32,
+    _: u32,
+    _: u32,
+    _: *anyopaque,
 ) void {
     std.debug.print("Keyboard modifiers changed\n", .{});
 }
