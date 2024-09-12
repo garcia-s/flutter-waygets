@@ -36,40 +36,20 @@ I've been thinking about performance, and what I want to acheive, I want this pa
 
 for what I've measured now the craziest waiting time comes from either starting or initializing the flutter engine, of course I'm using an unstriped unopt engine, but still, I don't think there'll be that much difference between that and the "real" engine. If the engine takes too long to start, there is no easy way to fix this, all I can hope is that initializing the engine is the slow part, and running it doesn't take to much time. If it isn't the case, then we'll have to lose the composable part of this idea and handle views (If possible) inside a single engine. 
 
+#12-09-2024
+
+I've been trying to AOT compile my stuff so I can correctly (or not) asses if this is a viable project or not, because if we have like a crazy ammount of delay between pressing a key and loading an applet it is not worth the effort. Documentation is almost non-existent and outdated but I managed to read through stuff and ask GPT questions and turns out we need a couple of things. 
+
+
+## A release build of the libflutter_engine.so
+
+This is not provided but somebody is doing the hard work for us, and these found in a bundle with another embedder in here: https://github.com/sony/flutter-embedded-linux/releases/latest
+
+## The AOT compile doesn't work
+
+Flutter has removed the ``` flutter build aot``` flag so, the only other option is to compile using the *assemble* flag. This has no documentation and we have to read the dart code from source but once wefind that out it's pretty easy to find what we are looking for. Inside the flutter SDK, there is a file called assemble.dart which contains a lot of very useful information.
 
 
 
 
-
-
-kernel:
-	/home/symmetry/dev/flutter/bin/cache/dart-sdk/bin/dartaotruntime \
-	  	$(HOME)/dev/flutter/bin/cache/dart-sdk/bin/snapshots/frontend_server_aot.dart.snapshot     \
-		--sdk-root $(HOME)/dev/flutter/bin/cache/artifacts/engine/common/flutter_patched_sdk   \
-		--target=flutter                             \
-		--tfa                                       \
-		-Ddart.vm.product=true                       \
-		--packages ./.dart_tool/package_config.json  \
-		--output-dill build/kernel_snapshot.dill     \
-		package:flutter_waygets/main.dart
-
-#flutter --verbose build bundle --debug \
-#	--local-engine-src-path ../src \
-#	--local-engine=host_debug_unopt \
-#	--local-engine-host=host_debug_unopt  
-
-
-aot: 
-	$(HOME)/dev/flutter/bin/cache/artifacts/engine/linux-x64-release/gen_snapshot\
-		--causal_async_stacks                                         \
-		--packages=.packages                                          \
-		--deterministic                                               \
-		--snapshot_kind=app-aot-blobs                                 \
-		--vm_snapshot_data=build/vm_snapshot_data                     \
-		--isolate_snapshot_data=build/isolate_snapshot_data           \
-		--vm_snapshot_instructions=build/vm_snapshot_instr            \
-		--isolate_snapshot_instructions=build/isolate_snapshot_instr  \
-		--no-sim-use-hardfp                                           \
-		--no-use-integer-division                                     \
-		build/kernel_snapshot.dill
 

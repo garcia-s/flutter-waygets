@@ -4,12 +4,12 @@ const WaylandEGL = @import("wayland_egl.zig").WaylandEGL;
 const EGLWindow = @import("egl_window.zig").EGLWindow;
 const InputState = @import("input_state.zig").InputState;
 const WindowState = @import("window_state.zig").WindowState;
+const aot = @import("elf_aot_data.zig");
 const OpenGLRendererConfig = @import("opengl_flutter_config.zig").OpenGLRendererConfig;
 const EngineHash = @import("utils.zig").EngineHash;
 const keyboard_listener = @import("keyboard_handler.zig").keyboard_listener;
 const wl_handler = @import("wayland_registry_handler.zig").wl_listener;
 const pointer_listener = @import("pointer_handler.zig").pointer_listener;
-const create_task_runner = @import("experimental_task_runner.zig").create_task_runner_description;
 
 pub const YaraEngine = struct {
     input_state: InputState = InputState{},
@@ -29,7 +29,6 @@ pub const YaraEngine = struct {
 
         const e_alloc = std.heap.page_allocator;
         self.engines = try e_alloc.alloc(c.FlutterEngine, 1);
-        //Create the engines goodies
 
         var window = EGLWindow{};
 
@@ -47,40 +46,44 @@ pub const YaraEngine = struct {
         );
 
         const alloc = std.heap.page_allocator;
-        const assets_path = try std.fmt.allocPrint(alloc, "{s}{s}", .{ args[1], "/build/flutter_assets" });
+        const assets_path = try std.fmt.allocPrint(
+            alloc,
+            "{s}{s}",
+            .{ args[1], "/build/release/app/flutter_assets" },
+        );
 
         const aot_alloc = std.heap.page_allocator;
-        const aot_path = try std.fmt.allocPrint(aot_alloc, "{s}{s}", .{ assets_path, "/kernel_blob.so" });
+        const aot_path = try std.fmt.allocPrint(aot_alloc, "{s}{s}", .{ assets_path, "/../lib/libapp.so" });
 
-        var aot_out: c.FlutterEngineAOTData = undefined;
-        const source: c.FlutterEngineAOTDataSource = c.FlutterEngineAOTDataSource{
-            .type = c.kFlutterEngineAOTDataSourceTypeElfPath,
-            .unnamed_0 = .{
-                .elf_path = aot_path.ptr,
-            },
-        };
-
-        _ = c.FlutterEngineCreateAOTData(&source, &aot_out);
-        // // const argsv = [_][*:0]const u8{
-        // //     "--trace-skia",
-        // //     "--debug",
-        // //     "--verbose",
-        // // };
-
-        const engine_args = c.FlutterProjectArgs{
+        // const argsv = [_][*:0]const u8{
+        //     "--trace-skia",
+        //     "--debug", "--verbose",
+        // };
+        var engine_args = c.FlutterProjectArgs{
             .struct_size = @sizeOf(c.FlutterProjectArgs),
             .assets_path = @ptrCast(assets_path.ptr),
-            .aot_data = aot_out,
-            .custom_task_runners = &FlutterCustomTaskRunners,
+            .icu_data_path = @ptrCast(args[2]),
+
+            // .aot_data = aot_out,
             // .command_line_argv = @ptrCast(&argsv),
             // .command_line_argc = @intCast(argsv.len),
         };
 
+        if (c.FlutterEngineRunsAOTCompiledDartCode()) {
+            try aot.get_aot_data(
+                aot_path,
+                &engine_args.vm_snapshot_data,
+                &engine_args.vm_snapshot_instructions,
+                &engine_args.isolate_snapshot_data,
+                &engine_args.isolate_snapshot_instructions,
+            );
+        }
+
+        std.debug.print("ENGINE ARGS: {?}\n", .{engine_args});
+
         const config: c.FlutterRendererConfig = c.FlutterRendererConfig{
+            .unnamed_0 = .{ .open_gl = OpenGLRendererConfig },
             .type = c.kOpenGL,
-            .unnamed_0 = .{
-                .open_gl = OpenGLRendererConfig,
-            },
         };
 
         const eng = c.FlutterEngineInitialize(
@@ -111,40 +114,11 @@ pub const YaraEngine = struct {
             .display_id = 0,
             .view_id = 0,
         };
-
         _ = c.FlutterEngineSendWindowMetricsEvent(self.engines[0], &event);
-        // while (true) {
-        //
-        _ = c.wl_display_dispatch(self.wl_display);
-        std.debug.print("Initial Dispatch\n", .{});
-
-        std.time.sleep(2 * 1000 * 1000 * 1000);
-        try window.destroy();
-        _ = c.FlutterEngineNotifyLowMemoryWarning(self.engines[0]);
-
-        std.time.sleep(2 * 1000 * 1000 * 1000);
-        std.debug.print("Re-INIT\n", .{});
-        try window.init(
-            self.wl_display,
-            self.wl_compositor,
-            self.wl_layer_shell,
-            self.egl.display,
-            self.egl.config,
-            WindowState{
-                .width = 500,
-                .height = 1080,
-                .closed = false,
-            },
-        );
-
-        std.debug.print("Re-INIT\n", .{});
-        _ = c.FlutterEngineScheduleFrame(self.engines[0]);
-        _ = c.wl_display_dispatch(self.wl_display);
-
-        std.debug.print("Dispatched \n", .{});
+        // const data: c.FlutterEngineAOTData = undefined;
+        // _ = c.FlutterEngineCollectAOTData(data);
         while (true) {
             _ = c.wl_display_dispatch(self.wl_display);
-            std.debug.print("Dispatched \n", .{});
         }
     }
 
@@ -200,10 +174,4 @@ pub const YaraEngine = struct {
             &self.input_state,
         );
     }
-};
-
-pub const FlutterCustomTaskRunners = c.FlutterCustomTaskRunners{
-    .struct_size = @sizeOf(c.FlutterCustomTaskRunners),
-    .platform_task_runner = &create_task_runner(),
-    .render_task_runner = &create_task_runner(),
 };

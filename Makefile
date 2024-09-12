@@ -4,7 +4,7 @@ ZIG_OUT := ./include
 ZIG_CACHE := ./include
 DART_TOOLS := ./include
 FLUTTER_BUILD := ./protocols
-
+GEN_PATH := $(FLUTTER_PATH)/cache/artifacts/engine/linux-x64-release/gen_snapshot
 
 PROTOCOLS := $(wildcard $(PROTOCOLS_DIR)/*.xml)
 
@@ -19,16 +19,20 @@ $(INCLUDE_DIR)/%-protocol.c: $(PROTOCOLS_DIR)/%.xml
 	wayland-scanner private-code $< $@
 
 
-bundle: 
-	cd widgets/status_bar && flutter build bundle
-
 embedder:
-	zig build -- 
+	zig build
 
 run:
 	./zig-out/bin/flutter_embedder ./widgets/status_bar/ ./include/icudtl.dat
 
-dev: bundle embedder run
+
+core: 
+	$(GEN_PATH) \
+		--snapshot_kind=core 											\
+		--vm_snapshot_data=./build/vm_snapshot_data						\
+		--isolate_snapshot_data=build/isolate_snapshot_data           	\
+		--verbose														\
+		./widgets/status_bar/build/kernel_snapshot.dill
 
 clean:
 	rm -f $(HEADERS) $(SOURCES) $(FLUTTER_BUILD) $(DART_TOOLS) $(ZIG_BUILD) $(ZIG_CACHE)
