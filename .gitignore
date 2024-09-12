@@ -1,6 +1,3 @@
 zig-out/**
 .zig-cache/**
-#Just compile them brah
-build/**
-.dart_tool/**
 
