@@ -81,6 +81,8 @@ pub const YaraEngine = struct {
             &self.input_state,
         );
     }
+
+    pub fn reload() void {}
 };
 
 fn render_callback(_: ?*anyopaque) callconv(.C) void {}
