@@ -21,6 +21,7 @@ pub fn pointer_enter_handler(
     _: i32,
 ) callconv(.C) void {
     const state: *InputState = @ptrCast(@alignCast(data));
+    std.debug.print("Current mouse {*}\n", .{surface});
     state.mouse_focused = surface.?;
 }
 fn frame_handler(_: ?*anyopaque, _: ?*c.struct_wl_pointer) callconv(.C) void {}
@@ -49,7 +50,6 @@ pub fn pointer_motion_handler(
 
     event.timestamp = @intCast(std.time.milliTimestamp());
     event.phase = if (event.buttons == 0) c.kHover else c.kMove;
-
     const engine = state.map.get(state.mouse_focused.?) orelse {
         return;
     };
@@ -58,7 +58,6 @@ pub fn pointer_motion_handler(
     if (r != c.kSuccess) {
         std.debug.print("Not sendin event x:{d}, y:{d}\n", .{ x, y });
     }
-    // if (event != null) return;
 }
 
 pub fn pointer_button_handler(

@@ -13,7 +13,6 @@ const ctx_attrib: [*c]c.EGLint = @constCast(&[_]c.EGLint{
 
 pub const EGLWindow = struct {
     state: WindowState = undefined,
-    mux: std.Thread.Mutex = std.Thread.Mutex{},
     //Wayland stuff
     wl_surface: *c.wl_surface = undefined,
     wl_layer_surface: *c.zwlr_layer_surface_v1 = undefined,
@@ -38,9 +37,6 @@ pub const EGLWindow = struct {
         config: c.EGLConfig,
         state: WindowState,
     ) !void {
-        self.mux.lock();
-        defer self.mux.unlock();
-
         self.state = state;
         self.display = egldisplay;
 
@@ -48,7 +44,6 @@ pub const EGLWindow = struct {
             std.debug.print("failed to get a wayland surface\n", .{});
             return error.SurfaceCreationFailed;
         };
-
         self.dummy_surface = c.wl_compositor_create_surface(wl_compositor) orelse {
             std.debug.print("failed to get a wayland surface\n", .{});
             return error.surfacecreationfailed;
@@ -79,7 +74,7 @@ pub const EGLWindow = struct {
         //Pass it as configs
         c.zwlr_layer_surface_v1_set_anchor(
             self.wl_layer_surface,
-            c.ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT,
+            c.ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP,
         );
 
         //Pass it as configs
@@ -90,7 +85,7 @@ pub const EGLWindow = struct {
         );
         _ = c.zwlr_layer_surface_v1_set_exclusive_zone(
             self.wl_layer_surface,
-            @intCast(state.width),
+            @intCast(state.exclusive_zone),
         );
 
         c.wl_surface_commit(self.wl_surface);
@@ -120,7 +115,6 @@ pub const EGLWindow = struct {
             return error.EglContextCreateFailed;
         };
 
-        //
         self.resource_context = c.eglCreateContext(
             self.display,
             config,
@@ -157,9 +151,6 @@ pub const EGLWindow = struct {
     }
 
     pub fn destroy(self: *EGLWindow) !void {
-        self.mux.lock();
-        defer self.mux.unlock();
-
         _ = c.eglDestroySurface(self.display, self.surface);
         _ = c.eglDestroySurface(self.display, self.resource_surface);
 

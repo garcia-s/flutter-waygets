@@ -20,7 +20,7 @@ embedder:
 	zig build
 
 run:
-	./zig-out/bin/flutter_embedder ./widgets/status_bar/ ./include/icudtl.dat
+	./zig-out/bin/flutter_embedder ../status_bar/ ./include/icudtl.dat
 
 
 #This is the command to compile a flutter project
