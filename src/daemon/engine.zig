@@ -6,7 +6,7 @@ const WaylandManager = @import("wl_manager.zig").WaylandManager;
 const FLEngine = @import("../flutter/fl_engine.zig").FLEngine;
 
 pub const YaraEngine = struct {
-    // input_state: InputState = InputState{},
+    input_state: InputState = InputState{},
     egl: WaylandEGL = WaylandEGL{},
     wl: WaylandManager = WaylandManager{},
     engines: std.StringHashMap(*FLEngine) = undefined,
@@ -63,7 +63,7 @@ pub const YaraEngine = struct {
     }
 
     fn init(self: *YaraEngine) !void {
-        // self.input_state.init();
+        self.input_state.init();
         try self.wl.init();
         try self.egl.init(self.wl.display);
     }
