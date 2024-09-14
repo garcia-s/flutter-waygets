@@ -1,22 +1,27 @@
 const c = @import("../c_imports.zig").c;
-const EGLWindow = @import("egl_window.zig").EGLWindow;
+const FLWindow = @import("fl_window.zig").FLWindow;
 const std = @import("std");
 
 //See, none of this uses ANYTHING other than the window info, none of it uses any wayland
 //so the information I should pass to it is JUST the opengl_manager, not the whole engine
 //Granted, it's still just a pointer, but it's not necessary
-pub const OpenGLRendererConfig = c.FlutterOpenGLRendererConfig{
-    .struct_size = @sizeOf(c.FlutterOpenGLRendererConfig),
-    .make_current = make_current,
-    .present = present,
-    .make_resource_current = make_resource_current,
-    .clear_current = clear_current,
-    .fbo_callback = fbo_callback,
-    .gl_proc_resolver = gl_proc_resolver,
-};
+//
+//
+
+pub fn create_renderer_config() c.FlutterOpenGLRendererConfig {
+    return c.FlutterOpenGLRendererConfig{
+        .struct_size = @sizeOf(c.FlutterOpenGLRendererConfig),
+        .make_current = make_current,
+        .present = present,
+        .make_resource_current = make_resource_current,
+        .clear_current = clear_current,
+        .fbo_callback = fbo_callback,
+        .gl_proc_resolver = gl_proc_resolver,
+    };
+}
 
 pub fn make_current(data: ?*anyopaque) callconv(.C) bool {
-    const window: *EGLWindow = @ptrCast(@alignCast(data));
+    const window: *FLWindow = @ptrCast(@alignCast(data));
 
     const result = c.eglMakeCurrent(
         window.display,
@@ -33,7 +38,7 @@ pub fn make_current(data: ?*anyopaque) callconv(.C) bool {
 }
 
 pub fn clear_current(data: ?*anyopaque) callconv(.C) bool {
-    const window: *EGLWindow = @ptrCast(@alignCast(data));
+    const window: *FLWindow = @ptrCast(@alignCast(data));
 
     const result = c.eglMakeCurrent(
         window.display,
@@ -50,7 +55,7 @@ pub fn clear_current(data: ?*anyopaque) callconv(.C) bool {
 }
 
 pub fn present(data: ?*anyopaque) callconv(.C) bool {
-    const window: *EGLWindow = @ptrCast(@alignCast(data));
+    const window: *FLWindow = @ptrCast(@alignCast(data));
 
     const result = c.eglSwapBuffers(
         window.display,
@@ -70,7 +75,7 @@ pub fn fbo_callback(_: ?*anyopaque) callconv(.C) u32 {
 }
 // resource context setup.
 pub fn make_resource_current(data: ?*anyopaque) callconv(.C) bool {
-    const window: *EGLWindow = @ptrCast(@alignCast(data));
+    const window: *FLWindow = @ptrCast(@alignCast(data));
 
     const result = c.eglMakeCurrent(
         window.display,

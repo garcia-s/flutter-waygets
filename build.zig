@@ -4,7 +4,7 @@ pub fn build(b: *std.Build) void {
     // const proto_dir = "protocols";
     const include_dir = "include";
     const exe = b.addExecutable(.{
-        .name = "flutter_embedder",
+        .name = "yarad",
         .root_source_file = b.path("src/main.zig"),
         .target = b.host,
     });
