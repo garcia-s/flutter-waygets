@@ -1,7 +1,7 @@
 const std = @import("std");
 const c = @import("../c_imports.zig").c;
 
-pub const keyboard_listener = c.wl_keyboard_listener{
+pub const wl_keyboard_listener = c.wl_keyboard_listener{
     .keymap = keyboard_keymap_handler,
     .enter = keyboard_enter_handler,
     .leave = keyboard_leave_handler,

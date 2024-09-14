@@ -1,9 +1,9 @@
 const c = @import("../c_imports.zig").c;
 const std = @import("std");
 
-const YaraEngine = @import("engine.zig").YaraEngine;
+const WaylandManager = @import("wl_manager.zig").WaylandManager;
 
-pub const wl_listener = c.wl_registry_listener{
+pub const wl_registry_listener = c.wl_registry_listener{
     .global = global_registry_handler,
     .global_remove = global_registry_remover,
 };
@@ -15,10 +15,10 @@ fn global_registry_handler(
     iface: [*c]const u8,
     version: u32,
 ) callconv(.C) void {
-    const manager: *YaraEngine = @ptrCast(@alignCast(data));
+    const manager: *WaylandManager = @ptrCast(@alignCast(data));
 
     if (std.mem.eql(u8, std.mem.span(iface), "wl_compositor")) {
-        manager.wl_compositor = @ptrCast(
+        manager.compositor = @ptrCast(
             c.wl_registry_bind(
                 registry,
                 name,
@@ -30,7 +30,7 @@ fn global_registry_handler(
     }
 
     if (std.mem.eql(u8, std.mem.span(iface), "zwlr_layer_shell_v1")) {
-        manager.wl_layer_shell = @ptrCast(
+        manager.layer_shell = @ptrCast(
             c.wl_registry_bind(
                 registry,
                 name,
@@ -40,8 +40,9 @@ fn global_registry_handler(
         );
         return;
     }
+
     if (std.mem.eql(u8, std.mem.span(iface), "wl_seat")) {
-        manager.wl_seat = @ptrCast(
+        manager.seat = @ptrCast(
             c.wl_registry_bind(
                 registry,
                 name,

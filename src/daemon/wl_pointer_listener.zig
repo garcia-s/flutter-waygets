@@ -1,9 +1,9 @@
 const c = @import("../c_imports.zig").c;
 const std = @import("std");
-const EGLWindow = @import("egl_window.zig").EGLWindow;
+const FLWindow = @import("../flutter/fl_window.zig").FLWindow;
 const InputState = @import("input_state.zig").InputState;
 
-pub const pointer_listener = c.wl_pointer_listener{
+pub const wl_pointer_listener = c.wl_pointer_listener{
     .leave = pointer_leave_handler,
     .enter = pointer_enter_handler,
     .motion = pointer_motion_handler,

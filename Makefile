@@ -20,9 +20,7 @@ embedder:
 	zig build
 
 run:
-	./zig-out/bin/flutter_embedder ../status_bar/ ./include/icudtl.dat
-
-
+	./zig-out/bin/flutter_embedder $(HOME)/.config/yara
 #This is the command to compile a flutter project
 aot:
 	flutter assemble -v -dBuildMode="release" \

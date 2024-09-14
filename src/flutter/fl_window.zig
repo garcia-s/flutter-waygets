@@ -1,18 +1,14 @@
 const std = @import("std");
 const c = @import("../c_imports.zig").c;
-const WindowState = @import("window_state.zig").WindowState;
-
-//TODO: OpenGL context setup The parameter here is
-//a pointer to what we passed as "user_data"
-//which for now is the FlutterEngine instance
+const WindowConfig = @import("../daemon/window_config.zig");
 
 const ctx_attrib: [*c]c.EGLint = @constCast(&[_]c.EGLint{
     c.EGL_CONTEXT_CLIENT_VERSION, 2,
     c.EGL_NONE,
 });
 
-pub const EGLWindow = struct {
-    state: WindowState = undefined,
+pub const FLWindow = struct {
+    state: WindowConfig = undefined,
     //Wayland stuff
     wl_surface: *c.wl_surface = undefined,
     wl_layer_surface: *c.zwlr_layer_surface_v1 = undefined,
@@ -29,13 +25,13 @@ pub const EGLWindow = struct {
     context: c.EGLContext = null,
 
     pub fn init(
-        self: *EGLWindow,
+        self: *FLWindow,
         wl_display: *c.wl_display,
         wl_compositor: *c.struct_wl_compositor,
         wl_layer_shell: *c.struct_zwlr_layer_shell_v1,
         egldisplay: c.EGLDisplay,
         config: c.EGLConfig,
-        state: WindowState,
+        state: WindowConfig,
     ) !void {
         self.state = state;
         self.display = egldisplay;
@@ -150,7 +146,7 @@ pub const EGLWindow = struct {
         }
     }
 
-    pub fn destroy(self: *EGLWindow) !void {
+    pub fn destroy(self: *FLWindow) !void {
         _ = c.eglDestroySurface(self.display, self.surface);
         _ = c.eglDestroySurface(self.display, self.resource_surface);
 
