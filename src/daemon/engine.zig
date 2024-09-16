@@ -6,6 +6,7 @@ const WaylandManager = @import("wl_manager.zig").WaylandManager;
 const FLEngine = @import("../flutter/fl_engine.zig").FLEngine;
 
 pub const YaraEngine = struct {
+    alloc: std.mem.Allocator = undefined,
     input_state: InputState = InputState{},
     egl: WaylandEGL = WaylandEGL{},
     wl: WaylandManager = WaylandManager{},
@@ -21,17 +22,17 @@ pub const YaraEngine = struct {
     //  path should also contain a valid icudtl.dat somewhere || A single one?
 
     pub fn run(self: *YaraEngine, args: [][]u8) !void {
-        try self.init();
-        // const e_alloc = std.heap.page_allocator;
-        // self.engines = try e_alloc.alloc(c.FlutterEngine, 1);
-        //Init all the wayland stuff
+        self.alloc = std.heap.page_allocator;
+        self.input_state.init(self.alloc);
+        try self.wl.init(&self.input_state);
+        try self.egl.init(self.wl.display);
 
-        const alloc = std.heap.page_allocator;
+        //This allocator might need to be changed to a general or arena
 
         const cwd = std.fs.cwd();
         const dir = try cwd.openDir(args[1], .{ .iterate = true });
 
-        self.engines = std.StringHashMap(*FLEngine).init(alloc);
+        self.engines = std.StringHashMap(*FLEngine).init(self.alloc);
 
         var iterator = dir.iterate();
         while (true) {
@@ -41,31 +42,21 @@ pub const YaraEngine = struct {
             if (entry.?.kind != .directory) continue;
             //try to load the config file
             //This will fail;
-            var e = try alloc.create(FLEngine);
+            var e = try self.alloc.create(FLEngine);
             const path = try std.fmt.allocPrint(
-                alloc,
+                self.alloc,
                 "{s}/{s}",
                 .{ args[1], entry.?.name },
             );
             e.init(path, self) catch continue;
-
-            // _ = try std.Thread.spawn(.{}, engineInit, .{ &e, path, self });
-            // try self.engines.put(entry.?.name, &e);
-            // Init the fking engines
+            //Adding it to the input state
+            try self.input_state.map.put(e.window.wl_surface, e.engine);
+            try self.engines.put(entry.?.name, e);
         }
 
         while (true) {
             _ = c.wl_display_dispatch(self.wl.display);
         }
-    }
-    fn engineInit(engine: *FLEngine, path: []u8, self: *YaraEngine) !void {
-        try engine.init(path, self);
-    }
-
-    fn init(self: *YaraEngine) !void {
-        self.input_state.init();
-        try self.wl.init();
-        try self.egl.init(self.wl.display);
     }
 
     pub fn reload() !void {}

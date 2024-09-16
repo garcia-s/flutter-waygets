@@ -50,6 +50,7 @@ pub const FLWindow = struct {
             self.wl_surface,
             null, // output
             self.state.layer,
+            //Please change this to the name of the app
             "yara_layer",
         ) orelse {
             std.debug.print("Failed to initialize a layer surface\n", .{});
@@ -70,6 +71,8 @@ pub const FLWindow = struct {
             c.ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT * @intFromBool(self.state.anchors.left) |
             c.ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM * @intFromBool(self.state.anchors.bottom) |
             c.ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT * @intFromBool(self.state.anchors.right));
+
+        std.debug.print("ANCHOR: {d}\n", .{anchor_mask});
         //Pass it as configs
         c.zwlr_layer_surface_v1_set_anchor(
             self.wl_layer_surface,
@@ -181,7 +184,6 @@ fn configure(
     _: u32,
     _: u32,
 ) callconv(.C) void {
-    std.debug.print("RETURNING LAYER ACK\n", .{});
     c.zwlr_layer_surface_v1_ack_configure(
         surface,
         serial,

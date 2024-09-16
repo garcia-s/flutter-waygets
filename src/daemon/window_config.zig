@@ -2,10 +2,10 @@ pub const WindowConfig = struct {
     auto_initialize: bool,
     width: u32,
     height: u32,
-    exclusive_zone: u32,
+    exclusive_zone: i32,
     layer: u2,
-    anchors: WindowAnchors,
     margin: ?[4]u16,
+    anchors: WindowAnchors,
 };
 
 pub const WindowAnchors = struct {

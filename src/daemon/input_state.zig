@@ -19,8 +19,7 @@ pub const InputState = struct {
     keyboard_focused: ?*c.struct_wl_surface = null,
     map: std.AutoHashMap(*c.struct_wl_surface, c.FlutterEngine) = undefined,
 
-    pub fn init(self: *InputState) void {
-        const alloc = std.heap.page_allocator;
+    pub fn init(self: *InputState, alloc: std.mem.Allocator) void {
         self.map = std.AutoHashMap(
             *c.struct_wl_surface,
             c.FlutterEngine,

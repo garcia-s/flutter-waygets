@@ -14,7 +14,7 @@ pub const WaylandManager = struct {
     seat: *c.struct_wl_seat = undefined,
     layer_shell: *c.zwlr_layer_shell_v1 = undefined,
 
-    pub fn init(self: *WaylandManager) !void {
+    pub fn init(self: *WaylandManager, input_state: *InputState) !void {
         self.display = c.wl_display_connect(null) orelse {
             std.debug.print("Failed to get a wayland display\n", .{});
             return error.WaylandConnectionFailed;
@@ -44,16 +44,16 @@ pub const WaylandManager = struct {
             return error.MissingGlobalObjects;
         }
 
-        // const pointer = c.wl_seat_get_pointer(self.seat) orelse {
-        //     std.debug.print("Failed to retrieve a pointer", .{});
-        //     return error.ErrorRetrievingPointer;
-        // };
-        //
-        // _ = c.wl_pointer_add_listener(
-        //     pointer,
-        //     &wl_pointer_listener,
-        //     input_state,
-        // );
+        const pointer = c.wl_seat_get_pointer(self.seat) orelse {
+            std.debug.print("Failed to retrieve a pointer", .{});
+            return error.ErrorRetrievingPointer;
+        };
+
+        _ = c.wl_pointer_add_listener(
+            pointer,
+            &wl_pointer_listener,
+            input_state,
+        );
         //
         // const keyboard = c.wl_seat_get_keyboard(self.seat) orelse {
         //     std.debug.print("Failed to retrieve a pointer", .{});
