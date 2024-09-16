@@ -30,10 +30,10 @@ Flutter has kinda good performance, but if we can't implement multi-window suppo
 
 ### We are missing the following things to be sort of working with a semi-usable project
 
--Keyboard input
--Proper engine disposal control
--Method channels to intra-embedder comunication between apps
--A Dbus implementation to allow outside applications to send events to the embedder and viceversa
+- Keyboard input
+- Proper engine disposal control
+- Method channels to intra-embedder comunication between apps
+- A Dbus implementation to allow outside applications to send events to the embedder and viceversa
 
 
 ### Things we might need to add but are not top priority
