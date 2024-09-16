@@ -86,6 +86,11 @@ pub const FLWindow = struct {
             state.height,
         );
 
+        _ = c.zwlr_layer_surface_v1_set_keyboard_interactivity(
+            self.wl_layer_surface,
+            state.keyboard_interactivity,
+        );
+
         _ = c.zwlr_layer_surface_v1_set_exclusive_zone(
             self.wl_layer_surface,
             @intCast(state.exclusive_zone),
