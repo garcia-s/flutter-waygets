@@ -12,15 +12,52 @@ pub const wl_keyboard_listener = c.wl_keyboard_listener{
 
 // Keyboard event handlers
 fn keyboard_keymap_handler(
-    _: ?*anyopaque,
+    data: ?*anyopaque,
     _: ?*c.wl_keyboard,
-    _: u32,
+    format: u32,
     //File descriptor??
-    _: i32,
+    fd: i32,
     //Keymap size??
-    _: u32,
+    size: u32,
 ) callconv(.C) void {
-    std.debug.print("Keyboard map ran\n", .{});
+    //Not yet ready for other formats
+    if (format != 1) return;
+
+    const state: *InputState = @ptrCast(@alignCast(data));
+
+    if (state.xkb.fd == fd and state.xkb.size == size) {
+        return;
+    }
+
+    const m: [*:0]const u8 = @ptrFromInt(
+        std.os.linux.mmap(null, size, std.os.linux.PROT.READ, std.os.linux.MAP{
+            .TYPE = std.os.linux.MAP_TYPE.SHARED,
+        }, fd, 0),
+    );
+
+    std.debug.print("What is bytes {s} \n", .{m});
+
+    state.xkb.keymap = c.xkb_keymap_new_from_string(
+        state.xkb.context,
+        @ptrCast(m),
+        c.XKB_KEYMAP_FORMAT_TEXT_V1,
+        c.XKB_KEYMAP_COMPILE_NO_FLAGS,
+    );
+
+    if (state.xkb.keymap == null) {
+        std.debug.print("XKB Keymap failed \n", .{});
+        return;
+    }
+    //
+    state.xkb.state = c.xkb_state_new(state.xkb.keymap);
+    if (state.xkb.state == null) {
+        //maybe cleanup?
+        std.debug.print("XKB State failed \n", .{});
+        return;
+    }
+
+    state.xkb.fd = fd;
+    state.xkb.size = size;
 }
 
 fn keyboard_enter_handler(
@@ -31,7 +68,7 @@ fn keyboard_enter_handler(
     _: ?*c.wl_array,
 ) callconv(.C) void {
     const state: *InputState = @ptrCast(@alignCast(data));
-    state.mouse_focused = surface.?;
+    state.keyboard_focused = surface.?;
 }
 
 fn keyboard_leave_handler(
@@ -54,35 +91,49 @@ fn keyboard_key_handler(
     k_state: u32,
 ) callconv(.C) void {
     const state: *InputState = @ptrCast(@alignCast(data));
-    if (state.mouse_focused == null) return;
-    const engine = state.map.get(state.mouse_focused.?) orelse {
+
+    if (state.xkb.keymap == null or state.xkb.keymap == null or state.xkb.context == null) {
+        return;
+    }
+
+    const engine = state.map.get(state.keyboard_focused.?) orelse {
         return;
     };
 
-    std.debug.print("Key info: {d} {d}\n", .{ key, k_state });
-    const event = c.FlutterKeyEvent{
-        .struct_size = @sizeOf(c.FlutterKeyEvent),
-        .timestamp = @floatFromInt(c.FlutterEngineGetCurrentTime()),
-        .logical = key,
-        .device_type = c.kFlutterKeyEventDeviceTypeKeyboard,
+    //--------- Key pressed ----------
+    var event = c.FlutterKeyEvent{
         // logical: u64 = @import("std").mem.zeroes(u64),
-        .type = if (k_state == 1) c.kFlutterKeyEventTypeDown else c.kFlutterKeyEventTypeUp,
         // physical: u64 = @import("std").mem.zeroes(u64),
         // synthesized: bool = @import("std").mem.zeroes(bool),
-        // device_type: FlutterKeyEventDeviceType = @import("std").mem.zeroes(FlutterKeyEventDeviceType),
-
+        .struct_size = @sizeOf(c.FlutterKeyEvent),
+        .timestamp = @floatFromInt(c.FlutterEngineGetCurrentTime()),
+        .device_type = c.kFlutterKeyEventDeviceTypeKeyboard,
+        .type = if (k_state == 1) c.kFlutterKeyEventTypeDown else c.kFlutterKeyEventTypeUp,
     };
+
+    if (k_state == 1) {
+        const sym = c.xkb_state_key_get_one_sym(state.xkb.state, key + 8);
+        const utf = c.xkb_state_key_get_utf32(state.xkb.state, sym);
+        event.physical = utf;
+        event.logical = utf;
+        event.character = @ptrCast(&utf);
+
+        std.debug.print("What key is {d} {d}\n", .{ utf, sym });
+    }
 
     const res = c.FlutterEngineSendKeyEvent(
         engine,
         &event,
-        null,
+        &key_callback,
         null,
     );
 
     if (res != c.kSuccess) {
         std.debug.print("Some error while sending the key\n", .{});
     }
+}
+fn key_callback(result: bool, _: ?*anyopaque) callconv(.C) void {
+    std.debug.print("What key is {}\n", .{result});
 }
 
 fn keyboard_modifiers_handler(

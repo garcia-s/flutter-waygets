@@ -22,11 +22,11 @@ pub const YaraEngine = struct {
     //  path should also contain a valid icudtl.dat somewhere || A single one?
 
     pub fn run(self: *YaraEngine, args: [][]u8) !void {
-        self.alloc = std.heap.page_allocator;
-        self.input_state.init(self.alloc);
+        try self.input_state.init();
         try self.wl.init(&self.input_state);
         try self.egl.init(self.wl.display);
 
+        self.alloc = std.heap.page_allocator;
         //This allocator might need to be changed to a general or arena
 
         const cwd = std.fs.cwd();
