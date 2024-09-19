@@ -55,14 +55,14 @@ pub const WaylandManager = struct {
             input_state,
         );
 
-        const keyboard = c.wl_seat_get_keyboard(self.seat) orelse {
-            return error.ErrorRetrievingKeyboard;
-        };
-
-        _ = c.wl_keyboard_add_listener(
-            keyboard,
-            &wl_keyboard_listener,
-            input_state,
-        );
+        // const keyboard = c.wl_seat_get_keyboard(self.seat) orelse {
+        //     return error.ErrorRetrievingKeyboard;
+        // };
+        //
+        // _ = c.wl_keyboard_add_listener(
+        //     keyboard,
+        //     &wl_keyboard_listener,
+        //     input_state,
+        // );
     }
 };

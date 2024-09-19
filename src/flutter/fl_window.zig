@@ -120,7 +120,7 @@ pub const FLWindow = struct {
 
     pub fn commit(
         self: *FLWindow,
-        display: *c.wl_display,
+        _: *c.wl_display,
         config: c.EGLConfig,
     ) !void {
         c.wl_surface_commit(self.wl_surface);
@@ -175,10 +175,10 @@ pub const FLWindow = struct {
             return error.EglResourceSurfaceFailed;
         }
 
-        if (c.wl_display_dispatch(display) < 0) {
-            std.debug.print("Failed to dispatch the layer engine\n", .{});
-            return error.LayerSurfaceFailed;
-        }
+        // if (c.wl_display_dispatch(display) < 0) {
+        //     std.debug.print("Failed to dispatch the layer engine\n", .{});
+        //     return error.LayerSurfaceFailed;
+        // }
     }
 };
 

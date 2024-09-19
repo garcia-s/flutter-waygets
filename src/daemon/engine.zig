@@ -7,27 +7,21 @@ const FLEngine = @import("../flutter/fl_engine.zig").FLEngine;
 
 pub const YaraEngine = struct {
     alloc: std.mem.Allocator = undefined,
-    input_state: InputState = InputState{},
     egl: WaylandEGL = WaylandEGL{},
     wl: WaylandManager = WaylandManager{},
+
+    //this might be modified by multiple threads
+    input_state: InputState = InputState{},
     engines: std.StringHashMap(*FLEngine) = undefined,
-    //So the engine should:
-    //Initalize the wayland Initialize EGL stuff
-    //Get the configs and AOT from the projects
-    //Initialize the global platform channel
-    //Initialize the projects and run the ones that are oath to be ran
-    //
-    //  For that we need;
-    //  A path to the yara apps folder
-    //  path should also contain a valid icudtl.dat somewhere || A single one?
 
     pub fn run(self: *YaraEngine, args: [][]u8) !void {
+        //Init the state
         try self.input_state.init();
         try self.wl.init(&self.input_state);
         try self.egl.init(self.wl.display);
 
-        self.alloc = std.heap.page_allocator;
-        //This allocator might need to be changed to a general or arena
+        var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+        self.alloc = gpa.allocator();
 
         const cwd = std.fs.cwd();
         const dir = try cwd.openDir(args[1], .{ .iterate = true });
@@ -35,28 +29,33 @@ pub const YaraEngine = struct {
         self.engines = std.StringHashMap(*FLEngine).init(self.alloc);
 
         var iterator = dir.iterate();
+
         while (true) {
             const entry = iterator.next() catch break;
             if (entry == null) break;
-            // Check if the entry is a director
+            // Check if the entry is a directory
             if (entry.?.kind != .directory) continue;
-            //try to load the config file
-            //This will fail;
-            var e = try self.alloc.create(FLEngine);
+
+            const e = try self.alloc.create(FLEngine);
+
             const path = try std.fmt.allocPrint(
                 self.alloc,
                 "{s}/{s}",
                 .{ args[1], entry.?.name },
             );
-            e.init(path, self) catch continue;
+
             //Adding it to the input state
-            try self.input_state.map.put(e.window.wl_surface, e.engine);
-            try self.engines.put(entry.?.name, e);
+            _ = try std.Thread.spawn(.{}, runProject, .{ e, path, self });
         }
 
         while (true) {
             _ = c.wl_display_dispatch(self.wl.display);
         }
+    }
+
+    pub fn runProject(e: *FLEngine, path: []u8, engine: *YaraEngine) !void {
+        try e.init(path, engine);
+        try e.run();
     }
 
     pub fn reload() !void {}
