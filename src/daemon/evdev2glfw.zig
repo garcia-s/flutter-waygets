@@ -1,0 +1,2 @@
+const Hashmap
+var table = 

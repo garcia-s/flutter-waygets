@@ -1,0 +1,20 @@
+{
+    "auto_initialize": true,
+    "width": 500,
+    "height": 1080,
+    "exclusive_zone": 500,
+    "layer": 2,
+    "anchors": {
+        "top": false,
+        "left": true,
+        "bottom": false,
+        "right": false
+    },
+    "keyboard_interactivity": 1,
+    "margin": [
+        0,
+        0,
+        0,
+        0
+    ]
+}

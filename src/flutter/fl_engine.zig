@@ -11,38 +11,38 @@ const loader = @import("../daemon/flutter_aot_loader.zig");
 const create_renderer_config = @import("fl_render_config.zig").create_renderer_config;
 const YaraEngine = @import("../daemon/engine.zig").YaraEngine;
 pub const FLEngine = struct {
+    gpa: std.heap.GeneralPurposeAllocator(.{}) = undefined,
+    alloc: std.mem.Allocator = undefined,
     path: [][]u8 = undefined,
-    window: FLWindow = FLWindow{},
+    window: *FLWindow = undefined,
     daemon: *YaraEngine = undefined,
     engine_args: c.FlutterProjectArgs = undefined,
     engine: c.FlutterEngine = undefined,
+    renderer_runner: *tasks.FLTaskRunner = undefined,
+    platform_runner: *tasks.FLTaskRunner = undefined,
 
     pub fn init(self: *FLEngine, root_path: []u8, daemon: *YaraEngine) !void {
-        const alloc = std.heap.page_allocator;
+        self.gpa = std.heap.GeneralPurposeAllocator(.{}){};
+        self.alloc = self.gpa.allocator();
 
-        const conf_path = try std.fmt.allocPrint(alloc, "{s}/{s}", .{
+        const conf_path = try std.fmt.allocPrint(self.alloc, "{s}/{s}", .{
             root_path,
             "config.json",
         });
-
-        const assets_path = try std.fmt.allocPrint(alloc, "{s}/{s}", .{
+        //C NEEDS this two to be null terminated strings if they are not it'll never shut up about it
+        const assets_path = try std.fmt.allocPrintZ(self.alloc, "{s}/{s}", .{
             root_path,
-            "flutter_assets/",
+            "flutter_assets",
+        });
+        const icu_path = try std.fmt.allocPrintZ(self.alloc, "{s}/{s}", .{
+            root_path,
+            "icudtl.dat",
         });
 
         const fd = try std.fs.cwd().openFile(conf_path, .{ .mode = .read_only });
-
-        const buff = try fd.readToEndAlloc(alloc, 2048);
-        defer alloc.free(buff);
-
-        const winconf = try std.json.parseFromSlice(WindowConfig, alloc, buff, .{});
-
-        const icu_alloc = std.heap.page_allocator;
-        const icu_path = try std.fmt.allocPrint(
-            icu_alloc,
-            "{s}{s}",
-            .{ root_path, "/icudtl.dat" },
-        );
+        const buff = try fd.readToEndAlloc(self.alloc, 2048);
+        defer self.alloc.free(buff);
+        const winconf = try std.json.parseFromSlice(WindowConfig, self.alloc, buff, .{});
 
         self.engine_args = c.FlutterProjectArgs{
             .struct_size = @sizeOf(c.FlutterProjectArgs),
@@ -51,20 +51,22 @@ pub const FLEngine = struct {
             .compositor = create_flutter_compositor(),
         };
 
-        const aot_path = try std.fmt.allocPrint(alloc, "{s}{s}", .{
+        const aot_path = try std.fmt.allocPrint(self.alloc, "{s}{s}", .{
             root_path,
             "/lib/libapp.so",
         });
 
-        try loader.get_aot_data(
-            aot_path,
-            &self.engine_args.vm_snapshot_data,
-            &self.engine_args.vm_snapshot_instructions,
-            &self.engine_args.isolate_snapshot_data,
-            &self.engine_args.isolate_snapshot_instructions,
-        );
+        if (c.FlutterEngineRunsAOTCompiledDartCode()) {
+            try loader.get_aot_data(
+                aot_path,
+                &self.engine_args.vm_snapshot_data,
+                &self.engine_args.vm_snapshot_instructions,
+                &self.engine_args.isolate_snapshot_data,
+                &self.engine_args.isolate_snapshot_instructions,
+            );
+        }
 
-        const config: c.FlutterRendererConfig = c.FlutterRendererConfig{
+        var config = c.FlutterRendererConfig{
             .type = c.kOpenGL,
             .unnamed_0 = .{
                 .open_gl = create_renderer_config(),
@@ -72,6 +74,7 @@ pub const FLEngine = struct {
         };
 
         self.daemon = daemon;
+        self.window = try self.alloc.create(FLWindow);
 
         try self.window.init(
             self.daemon.wl.compositor,
@@ -103,6 +106,7 @@ pub const FLEngine = struct {
                 .user_data = self.renderer_runner,
                 .runs_task_on_current_thread_callback = tasks.runs_task_on_current_thread,
                 .post_task_callback = &tasks.post_task_callback,
+                .identifier = 1,
             },
 
             .platform_task_runner = &c.FlutterTaskRunnerDescription{
@@ -110,6 +114,8 @@ pub const FLEngine = struct {
                 .user_data = self.platform_runner,
                 .runs_task_on_current_thread_callback = tasks.runs_task_on_current_thread,
                 .post_task_callback = tasks.post_task_callback,
+
+                .identifier = 2,
             },
         };
 
@@ -117,15 +123,18 @@ pub const FLEngine = struct {
             1,
             &config,
             &self.engine_args,
-            &self.window,
+            self.window,
             &self.engine,
         );
 
         if (res != c.kSuccess) {
             return error.FailedToRunFlutterEngine;
         }
+
         // _ = try std.Thread.spawn(.{}, run, .{self});
-        try self.run();
+        //
+        //
+        try self.daemon.input_state.map.put(self.window.wl_surface, self.engine);
     }
 
     pub fn run(self: *FLEngine) !void {
@@ -134,13 +143,17 @@ pub const FLEngine = struct {
         //     //     "--debug", "--verbose",
         //     // };
         //     var engine_args =
-        //
         try self.window.commit(
             self.daemon.wl.display,
             self.daemon.egl.config,
         );
 
-        _ = c.FlutterEngineRunInitialized(self.engine);
+        const result = c.FlutterEngineRunInitialized(self.engine);
+
+        if (result != c.kSuccess) {
+            std.debug.print("Failed to run the flutter engine \n", .{});
+            return error.FlutterEngineRunFailed;
+        }
 
         const event = c.FlutterWindowMetricsEvent{
             .struct_size = @sizeOf(c.FlutterWindowMetricsEvent),
@@ -156,6 +169,56 @@ pub const FLEngine = struct {
             .display_id = 0,
             .view_id = 0,
         };
+        const window = try self.alloc.create(FLWindow);
+
+        try self.window.init(
+            self.daemon.wl.compositor,
+            self.daemon.wl.layer_shell,
+            self.daemon.egl.display,
+            self.daemon.egl.config,
+            WindowConfig{
+                .auto_initialize = true,
+                .width = 300,
+                .height = 300,
+                .exclusive_zone = 300,
+                .layer = 2,
+                .anchors = WindowAnchors{
+                    .top = true,
+                    .left = false,
+                    .bottom = false,
+                    .right = false,
+                },
+                .margin = null,
+                .keyboard_interactivity = 1,
+            },
+        );
+        const ev2 = c.FlutterWindowMetricsEvent{
+            .struct_size = @sizeOf(c.FlutterWindowMetricsEvent),
+            .width = window.state.width,
+            .height = window.state.height,
+            .pixel_ratio = 1,
+            .left = 0,
+            .top = 0,
+            .physical_view_inset_top = 0,
+            .physical_view_inset_right = 0,
+            .physical_view_inset_bottom = 0,
+            .physical_view_inset_left = 0,
+            .display_id = 0,
+            .view_id = 1,
+        };
+
+        const view = c.FlutterAddViewInfo{
+            .struct_size = @sizeOf(c.FlutterAddViewInfo),
+            .view_id = 1,
+            .view_metrics = &ev2,
+            .user_data = window,
+            .add_view_callback = add_view_callback,
+        };
+
+        const res = c.FlutterEngineAddView(self.engine, &view);
+        if (res != c.kSuccess) {
+            std.debug.print("Failed to add view\n", .{});
+        }
 
         const window = try self.alloc.create(FLWindow);
 
@@ -206,6 +269,7 @@ pub const FLEngine = struct {
         }
 
         _ = c.FlutterEngineSendWindowMetricsEvent(self.engine, &event);
+
         _ = c.FlutterEngineScheduleFrame(self.engine);
 
         while (true) {

@@ -6,6 +6,7 @@ pub const WindowConfig = struct {
     layer: u2,
     margin: ?[4]u16,
     anchors: WindowAnchors,
+    keyboard_interactivity: u2,
 };
 
 pub const WindowAnchors = struct {

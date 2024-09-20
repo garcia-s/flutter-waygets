@@ -54,10 +54,9 @@ pub const WaylandManager = struct {
             &wl_pointer_listener,
             input_state,
         );
-        //
+
         // const keyboard = c.wl_seat_get_keyboard(self.seat) orelse {
-        //     std.debug.print("Failed to retrieve a pointer", .{});
-        //     return error.ErrorRetrievingPointer;
+        //     return error.ErrorRetrievingKeyboard;
         // };
         //
         // _ = c.wl_keyboard_add_listener(

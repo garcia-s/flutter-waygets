@@ -20,6 +20,7 @@ pub fn build(b: *std.Build) void {
     exe.linkSystemLibrary("wayland-egl");
     exe.linkSystemLibrary("wayland-eglstream");
     exe.linkSystemLibrary("wayland-client");
+    exe.linkSystemLibrary("xkbcommon");
     exe.linkSystemLibrary("flutter_engine");
 
     exe.addCSourceFiles(.{
