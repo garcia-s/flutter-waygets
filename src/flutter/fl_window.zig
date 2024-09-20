@@ -8,6 +8,7 @@ const ctx_attrib: [*c]c.EGLint = @constCast(&[_]c.EGLint{
 });
 
 pub const FLWindow = struct {
+    fo: u2 = 0,
     state: WindowConfig = undefined,
 
     display: c.EGLDisplay = undefined,

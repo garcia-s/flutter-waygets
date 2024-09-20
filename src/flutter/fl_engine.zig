@@ -3,6 +3,9 @@ const c = @import("../c_imports.zig").c;
 
 const FLWindow = @import("fl_window.zig").FLWindow;
 const WindowConfig = @import("../daemon/window_config.zig").WindowConfig;
+const WindowAnchors = @import("../daemon/window_config.zig").WindowAnchors;
+const create_flutter_compositor = @import("experimental_fl_compositor.zig").create_flutter_compositor;
+const tasks = @import("fl_task_runners.zig");
 //TODO: Move
 const loader = @import("../daemon/flutter_aot_loader.zig");
 const create_renderer_config = @import("fl_render_config.zig").create_renderer_config;
@@ -44,7 +47,8 @@ pub const FLEngine = struct {
         self.engine_args = c.FlutterProjectArgs{
             .struct_size = @sizeOf(c.FlutterProjectArgs),
             .assets_path = @ptrCast(assets_path.ptr),
-            .icu_data_path = @ptrCast(icu_path),
+            .icu_data_path = @ptrCast(icu_path.ptr),
+            .compositor = create_flutter_compositor(),
         };
 
         const aot_path = try std.fmt.allocPrint(alloc, "{s}{s}", .{
@@ -76,6 +80,38 @@ pub const FLEngine = struct {
             self.daemon.egl.config,
             winconf.value,
         );
+
+        self.renderer_runner = try self.alloc.create(tasks.FLTaskRunner);
+        self.platform_runner = try self.alloc.create(tasks.FLTaskRunner);
+
+        try self.renderer_runner.init(
+            self.alloc,
+            std.Thread.getCurrentId(),
+            &self.engine,
+        );
+
+        try self.platform_runner.init(
+            self.alloc,
+            std.Thread.getCurrentId(),
+            &self.engine,
+        );
+
+        self.engine_args.custom_task_runners = &c.FlutterCustomTaskRunners{
+            .struct_size = @sizeOf(c.FlutterCustomTaskRunners),
+            .render_task_runner = &c.FlutterTaskRunnerDescription{
+                .struct_size = @sizeOf(c.FlutterTaskRunnerDescription),
+                .user_data = self.renderer_runner,
+                .runs_task_on_current_thread_callback = tasks.runs_task_on_current_thread,
+                .post_task_callback = &tasks.post_task_callback,
+            },
+
+            .platform_task_runner = &c.FlutterTaskRunnerDescription{
+                .struct_size = @sizeOf(c.FlutterTaskRunnerDescription),
+                .user_data = self.platform_runner,
+                .runs_task_on_current_thread_callback = tasks.runs_task_on_current_thread,
+                .post_task_callback = tasks.post_task_callback,
+            },
+        };
 
         const res = c.FlutterEngineInitialize(
             1,
@@ -121,6 +157,65 @@ pub const FLEngine = struct {
             .view_id = 0,
         };
 
+        const window = try self.alloc.create(FLWindow);
+
+        try self.window.init(
+            self.daemon.wl.compositor,
+            self.daemon.wl.layer_shell,
+            self.daemon.egl.display,
+            self.daemon.egl.config,
+            WindowConfig{
+                .auto_initialize = true,
+                .width = 300,
+                .height = 300,
+                .exclusive_zone = 300,
+                .layer = 1,
+                .anchors = WindowAnchors{
+                    .top = true,
+                    .left = false,
+                    .bottom = false,
+                    .right = false,
+                },
+                .margin = .{ 0, 0, 0, 0 },
+                .keyboard_interactivity = 1,
+            },
+        );
+
+        var ev2 = try self.alloc.create(c.FlutterWindowMetricsEvent);
+        ev2.struct_size = @sizeOf(c.FlutterWindowMetricsEvent);
+        ev2.width = window.state.width;
+        ev2.height = window.state.height;
+        ev2.pixel_ratio = 1;
+        ev2.left = 0;
+        ev2.top = 0;
+        ev2.physical_view_inset_top = 0;
+        ev2.physical_view_inset_right = 0;
+        ev2.physical_view_inset_bottom = 0;
+        ev2.physical_view_inset_left = 0;
+        ev2.display_id = 0;
+
+        var view = try self.alloc.create(c.FlutterAddViewInfo);
+        view.struct_size = @sizeOf(c.FlutterAddViewInfo);
+        view.view_metrics = ev2;
+        view.user_data = window;
+        view.add_view_callback = add_view_callback;
+
+        const res = c.FlutterEngineAddView(self.engine, view);
+        if (res != c.kSuccess) {
+            std.debug.print("Failed to add view\n", .{});
+        }
+
         _ = c.FlutterEngineSendWindowMetricsEvent(self.engine, &event);
+        _ = c.FlutterEngineScheduleFrame(self.engine);
+
+        while (true) {
+            std.time.sleep(50 * 1000 * 1000);
+            self.platform_runner.run_next_task();
+            self.renderer_runner.run_next_task();
+        }
     }
 };
+
+fn add_view_callback(result: [*c]const c.FlutterAddViewResult) callconv(.C) void {
+    std.debug.print("IS Added? {?}\n", .{result.*});
+}

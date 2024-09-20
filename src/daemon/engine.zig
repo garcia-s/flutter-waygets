@@ -32,8 +32,6 @@ pub const YaraEngine = struct {
         const cwd = std.fs.cwd();
         const dir = try cwd.openDir(args[1], .{ .iterate = true });
 
-        self.engines = std.StringHashMap(*FLEngine).init(self.alloc);
-
         var iterator = dir.iterate();
         while (true) {
             const entry = iterator.next() catch break;
