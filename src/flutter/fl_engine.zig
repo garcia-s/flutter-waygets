@@ -171,58 +171,7 @@ pub const FLEngine = struct {
         };
         const window = try self.alloc.create(FLWindow);
 
-        try self.window.init(
-            self.daemon.wl.compositor,
-            self.daemon.wl.layer_shell,
-            self.daemon.egl.display,
-            self.daemon.egl.config,
-            WindowConfig{
-                .auto_initialize = true,
-                .width = 300,
-                .height = 300,
-                .exclusive_zone = 300,
-                .layer = 2,
-                .anchors = WindowAnchors{
-                    .top = true,
-                    .left = false,
-                    .bottom = false,
-                    .right = false,
-                },
-                .margin = null,
-                .keyboard_interactivity = 1,
-            },
-        );
-        const ev2 = c.FlutterWindowMetricsEvent{
-            .struct_size = @sizeOf(c.FlutterWindowMetricsEvent),
-            .width = window.state.width,
-            .height = window.state.height,
-            .pixel_ratio = 1,
-            .left = 0,
-            .top = 0,
-            .physical_view_inset_top = 0,
-            .physical_view_inset_right = 0,
-            .physical_view_inset_bottom = 0,
-            .physical_view_inset_left = 0,
-            .display_id = 0,
-            .view_id = 1,
-        };
-
-        const view = c.FlutterAddViewInfo{
-            .struct_size = @sizeOf(c.FlutterAddViewInfo),
-            .view_id = 1,
-            .view_metrics = &ev2,
-            .user_data = window,
-            .add_view_callback = add_view_callback,
-        };
-
-        const res = c.FlutterEngineAddView(self.engine, &view);
-        if (res != c.kSuccess) {
-            std.debug.print("Failed to add view\n", .{});
-        }
-
-        const window = try self.alloc.create(FLWindow);
-
-        try self.window.init(
+        try window.init(
             self.daemon.wl.compositor,
             self.daemon.wl.layer_shell,
             self.daemon.egl.display,

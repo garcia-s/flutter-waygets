@@ -21,6 +21,7 @@ pub fn create_renderer_config() c.FlutterOpenGLRendererConfig {
 }
 
 pub fn make_current(data: ?*anyopaque) callconv(.C) bool {
+    std.debug.print("Running make current\n", .{});
     const window: *FLWindow = @ptrCast(@alignCast(data));
 
     const result = c.eglMakeCurrent(
@@ -55,6 +56,7 @@ pub fn clear_current(data: ?*anyopaque) callconv(.C) bool {
 }
 
 pub fn present(data: ?*anyopaque) callconv(.C) bool {
+    std.debug.print("Running present\n", .{});
     const window: *FLWindow = @ptrCast(@alignCast(data));
 
     const result = c.eglSwapBuffers(
@@ -75,6 +77,7 @@ pub fn fbo_callback(_: ?*anyopaque) callconv(.C) u32 {
 }
 // resource context setup.
 pub fn make_resource_current(data: ?*anyopaque) callconv(.C) bool {
+    std.debug.print("Running make resource\n", .{});
     const window: *FLWindow = @ptrCast(@alignCast(data));
 
     const result = c.eglMakeCurrent(
@@ -93,6 +96,7 @@ pub fn make_resource_current(data: ?*anyopaque) callconv(.C) bool {
 }
 
 pub fn gl_proc_resolver(_: ?*anyopaque, proc_name: [*c]const u8) callconv(.C) ?*anyopaque {
+    std.debug.print("Running proc solver\n", .{});
     const result: ?*anyopaque = @ptrCast(@constCast(
         c.eglGetProcAddress(proc_name),
     ));

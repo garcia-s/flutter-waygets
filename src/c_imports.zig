@@ -2,9 +2,8 @@ pub const c = @cImport({
     @cDefine("WL_EGL_PLATFORM", "1");
     @cInclude("wayland-egl.h");
     @cInclude("xkbcommon/xkbcommon.h");
-    @cInclude("GL/glew.h");
-    @cInclude("GL/glext.h");
     @cInclude("GL/gl.h");
+    @cInclude("GL/glext.h");
     @cInclude("GL/glu.h");
     @cInclude("EGL/egl.h");
     @cInclude("EGL/eglext.h");
