@@ -1,20 +1,22 @@
 const c = @import("../c_imports.zig").c;
+const FLWindow = @import("fl_window.zig").FLWindow;
 const std = @import("std");
 pub const stubData = struct {
     fbo: *c_uint = undefined,
 };
 
-pub fn create_flutter_compositor() *const c.FlutterCompositor {
-    return &c.FlutterCompositor{
+pub fn create_flutter_compositor(window: *FLWindow) c.FlutterCompositor {
+    return c.FlutterCompositor{
         .struct_size = @sizeOf(c.FlutterCompositor),
-        .create_backing_store_callback = create_backing_store_callback,
-        .collect_backing_store_callback = collect_backing_store_callback,
+        .create_backing_store_callback = @ptrCast(&create_backing_store_callback),
+        .present_view_callback = @ptrCast(&present_view_callback),
+        .collect_backing_store_callback = @ptrCast(&collect_backing_store_callback),
         .avoid_backing_store_cache = false,
-        .present_view_callback = present_view_callback,
+        .user_data = @ptrCast(window),
     };
 }
 
-fn create_backing_store_callback(
+pub fn create_backing_store_callback(
     //Here we receive the size of of the render surface
     //And we receive the view_id too
     conf: [*c]const c.FlutterBackingStoreConfig,
@@ -22,8 +24,8 @@ fn create_backing_store_callback(
     store: [*c]c.FlutterBackingStore,
     _: ?*anyopaque,
 ) callconv(.C) bool {
-    const glGenFrameBuffers: c.PFNGLGENFRAMEBUFFERSPROC = @ptrCast(
-        c.eglGetProcAddress("glGenFrameBuffers"),
+    const glGenFramebuffers: c.PFNGLGENFRAMEBUFFERSPROC = @ptrCast(
+        c.eglGetProcAddress("glGenFramebuffers"),
     );
 
     const glCheckFramebufferStatus: c.PFNGLCHECKFRAMEBUFFERSTATUSPROC = @ptrCast(
@@ -31,7 +33,7 @@ fn create_backing_store_callback(
     );
 
     const glBindFramebuffer: c.PFNGLBINDFRAMEBUFFERPROC = @ptrCast(
-        c.eglGetProcAddress("glGenFrameBuffers"),
+        c.eglGetProcAddress("glBindFramebuffer"),
     );
 
     const glFramebufferTexture2D: c.PFNGLFRAMEBUFFERTEXTURE2DPROC =
@@ -40,37 +42,26 @@ fn create_backing_store_callback(
     const glDrawBuffers: c.PFNGLDRAWBUFFERSPROC =
         @ptrCast(c.eglGetProcAddress("glDrawBuffers"));
 
-    var name: c_uint = undefined;
-    glGenFrameBuffers.?(1, &name);
-    glBindFramebuffer.?(c.GL_FRAMEBUFFER, name);
-
-    const fb = c.FlutterOpenGLFramebuffer{
-        .target = c.GL_TEXTURE_2D,
-        .name = name,
-    };
-
-    var current: c_int = undefined;
-    c.glGetIntegerv(c.GL_FRAMEBUFFER_BINDING, &current);
-    std.debug.print("CURRENT FB {d}\n", .{current});
-    // c.glViewport(
-    //     0,
-    //     0,
-    //     @intFromFloat(conf.*.size.width),
-    //     @intFromFloat(conf.*.size.height),
+    // const glDrawBuffers: c.PFNGLDRAWBUFFERSPROC = @ptrCast(
+    //     c.eglGetProcAddress("glDrawBuffers"),
     // );
+
+    var name: c_uint = undefined;
+    glGenFramebuffers.?(1, &name);
+    glBindFramebuffer.?(c.GL_FRAMEBUFFER, @intCast(name));
 
     var tex: c_uint = 0;
     c.glGenTextures(1, @ptrCast(&tex));
-
     c.glBindTexture(c.GL_TEXTURE_2D, tex);
+
     c.glTexImage2D(
         c.GL_TEXTURE_2D,
         0,
-        c.GL_BGRA_EXT,
+        c.GL_RGBA8,
         @intFromFloat(conf.*.size.width),
         @intFromFloat(conf.*.size.height),
         0,
-        c.GL_BGRA_EXT,
+        c.GL_RGBA,
         c.GL_UNSIGNED_BYTE,
         null,
     );
@@ -86,6 +77,12 @@ fn create_backing_store_callback(
         c.GL_TEXTURE_MAG_FILTER,
         c.GL_LINEAR,
     );
+    //Why is this?
+    c.glBindTexture(c.GL_TEXTURE_2D, 0);
+
+    // var drawBuffers: c_int = c.GL_COLOR_ATTACHMENT0;
+    // glDrawBuffers.?(1, @ptrCast(&drawBuffers));
+    //
 
     glFramebufferTexture2D.?(
         c.GL_FRAMEBUFFER,
@@ -95,21 +92,21 @@ fn create_backing_store_callback(
         0,
     );
 
-    const err = c.glGetError();
-    if (err != c.GL_NO_ERROR) {
-        std.debug.print("Error in framebufferTexture2D!!!: {d}\n", .{err});
-    }
     const drawBuffers: [1]c.GLenum = .{c.GL_COLOR_ATTACHMENT0};
     glDrawBuffers.?(1, &drawBuffers);
-    std.debug.print("Tex: {d}\n", .{tex});
 
     if (glCheckFramebufferStatus.?(c.GL_FRAMEBUFFER) != c.GL_FRAMEBUFFER_COMPLETE) {
         std.debug.print("------------Framebuffer is incomplete------------\n", .{});
         return false;
     }
 
-    glBindFramebuffer.?(c.GL_FRAMEBUFFER, 0);
-    c.glBindTexture(c.GL_TEXTURE_2D, 0);
+    const fb = c.FlutterOpenGLFramebuffer{
+        //Did I just spent 30 years trying to configure an incorrectly named parameter, well yes,
+        //this is not the "Target" this is the god damn format
+        .target = c.GL_RGBA8,
+        .name = name,
+        .destruction_callback = destroy_callback,
+    };
 
     store.*.struct_size = @sizeOf(c.FlutterBackingStore);
     store.*.type = c.kFlutterBackingStoreTypeOpenGL;
@@ -118,66 +115,61 @@ fn create_backing_store_callback(
     store.*.unnamed_0.open_gl.type = c.kFlutterOpenGLTargetTypeFramebuffer;
     store.*.unnamed_0.open_gl.unnamed_0.framebuffer = fb;
 
+    glBindFramebuffer.?(c.GL_FRAMEBUFFER, 0);
     return true;
 }
 
-fn present_view_callback(info: [*c]const c.FlutterPresentViewInfo) callconv(.C) bool {
-    var current: c_int = 0;
-    c.glGetIntegerv(c.GL_FRAMEBUFFER_BINDING, &current);
-    std.debug.print("CURRENT FB 2 {d}\n", .{current});
+pub fn destroy_callback(_: ?*anyopaque) callconv(.C) void {}
 
+pub fn present_view_callback(info: [*c]const c.FlutterPresentViewInfo) callconv(.C) bool {
     const glBindFramebuffer: c.PFNGLBINDFRAMEBUFFERPROC = @ptrCast(
         c.eglGetProcAddress("glBindFramebuffer"),
     );
 
-    const glCheckFramebufferStatus: c.PFNGLCHECKFRAMEBUFFERSTATUSPROC = @ptrCast(
-        c.eglGetProcAddress("glCheckFramebufferStatus"),
+    const glBlitFramebuffer: c.PFNGLBLITFRAMEBUFFERPROC = @ptrCast(
+        c.eglGetProcAddress("glBlitFramebuffer"),
     );
-
     for (0..info.*.layers_count) |i| {
-        std.debug.print("Ran\n", .{});
         const layer = info.*.layers[i];
-        const store: [*c]const c.FlutterBackingStore = layer.*.unnamed_0.backing_store.?;
-        const fb = store.*.unnamed_0.open_gl.unnamed_0.framebuffer;
+        const backs: [*c]const c.FlutterBackingStore = layer.*.unnamed_0.backing_store.?;
+        const fb = backs.*.unnamed_0.open_gl.unnamed_0.framebuffer;
 
-        glBindFramebuffer.?(c.GL_FRAMEBUFFER, fb.name);
-        c.glViewport(0, 0, 1920, 400);
-
-        c.glClearColor(1, 1, 1, 1);
-        c.glClear(c.GL_COLOR_BUFFER_BIT);
-
-        if (glCheckFramebufferStatus.?(c.GL_FRAMEBUFFER) != c.GL_FRAMEBUFFER_COMPLETE) {
-            std.debug.print("------------Framebuffer is incomplete------------\n", .{});
-            return false;
-        }
-
-        if (store == null) {
+        if (backs == null) {
             continue;
         }
 
-        if (layer.*.type == c.kFlutterLayerContentTypeBackingStore) {}
-        //Unbind
+        glBindFramebuffer.?(c.GL_READ_FRAMEBUFFER, fb.name);
+        glBindFramebuffer.?(c.GL_DRAW_FRAMEBUFFER, 0);
+        c.glViewport(
+            0,
+            0,
+            @intFromFloat(layer.*.size.width),
+            @intFromFloat(layer.*.size.height),
+        );
+        glBlitFramebuffer.?(
+            0,
+            0,
+            @intFromFloat(layer.*.size.width),
+            @intFromFloat(layer.*.size.height),
+            0,
+            0,
+            @intFromFloat(layer.*.size.width),
+            @intFromFloat(layer.*.size.height),
+            c.GL_COLOR_BUFFER_BIT, // Copy the color buffer
+            c.GL_NEAREST, // Nearest filtering
+        );
+
         glBindFramebuffer.?(c.GL_FRAMEBUFFER, 0);
+        const window: *FLWindow = @ptrCast(@alignCast(info.*.user_data));
+        _ = c.eglSwapBuffers(window.display, window.surface);
     }
 
     return true;
 }
 
-fn collect_backing_store_callback(
+pub fn collect_backing_store_callback(
     _: [*c]const c.FlutterBackingStore,
     _: ?*anyopaque,
 ) callconv(.C) bool {
-    std.debug.print("Using the", .{});
     return true;
 }
-
-// glGenFramebuffers(1, &framebuffer.name);
-//
-// // Bind the framebuffer for configuration
-// glBindFramebuffer(GL_FRAMEBUFFER, framebuffer.name);
-//
-// // (Attach textures or renderbuffers here)
-//
-// glBindFramebuffer(GL_FRAMEBUFFER, 0); // Unbind when done
-//
-// return framebuffer;

@@ -17,7 +17,6 @@ pub fn build(b: *std.Build) void {
     exe.linkSystemLibrary("opengl");
     exe.linkSystemLibrary("glfw3");
     exe.linkSystemLibrary("wayland-egl");
-    exe.linkSystemLibrary("wayland-eglstream");
     exe.linkSystemLibrary("wayland-client");
     exe.linkSystemLibrary("xkbcommon");
     exe.linkSystemLibrary("flutter_engine");

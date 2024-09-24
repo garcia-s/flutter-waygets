@@ -48,7 +48,6 @@ pub const FLEngine = struct {
             .struct_size = @sizeOf(c.FlutterProjectArgs),
             .assets_path = @ptrCast(assets_path.ptr),
             .icu_data_path = @ptrCast(icu_path.ptr),
-            .compositor = create_flutter_compositor(),
         };
 
         const aot_path = try std.fmt.allocPrint(self.alloc, "{s}{s}", .{
@@ -75,7 +74,6 @@ pub const FLEngine = struct {
 
         self.daemon = daemon;
         self.window = try self.alloc.create(FLWindow);
-
         try self.window.init(
             self.daemon.wl.compositor,
             self.daemon.wl.layer_shell,
@@ -114,11 +112,11 @@ pub const FLEngine = struct {
                 .user_data = self.platform_runner,
                 .runs_task_on_current_thread_callback = tasks.runs_task_on_current_thread,
                 .post_task_callback = tasks.post_task_callback,
-
                 .identifier = 2,
             },
         };
 
+        self.engine_args.compositor = @ptrCast(&create_flutter_compositor(self.window));
         const res = c.FlutterEngineInitialize(
             1,
             &config,
@@ -128,21 +126,15 @@ pub const FLEngine = struct {
         );
 
         if (res != c.kSuccess) {
+            std.debug.print("Failed to initialize the engine", .{});
             return error.FailedToRunFlutterEngine;
-        }
-
-        // _ = try std.Thread.spawn(.{}, run, .{self});
+        } // _ = try std.Thread.spawn(.{}, run, .{self});
         //
         //
         try self.daemon.input_state.map.put(self.window.wl_surface, self.engine);
     }
 
     pub fn run(self: *FLEngine) !void {
-        //     // const argsv = [_][*:0]const u8{
-        //     //     "--trace-skia",
-        //     //     "--debug", "--verbose",
-        //     // };
-        //     var engine_args =
         try self.window.commit(
             self.daemon.wl.display,
             self.daemon.egl.config,
@@ -174,6 +166,7 @@ pub const FLEngine = struct {
 
         while (true) {
             std.time.sleep(50 * 1000 * 1000);
+
             self.platform_runner.run_next_task();
             self.renderer_runner.run_next_task();
         }
