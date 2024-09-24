@@ -8,8 +8,8 @@ const config_attrib = [_]c.EGLint{
     c.EGL_GREEN_SIZE,      8,
     c.EGL_BLUE_SIZE,       8,
     c.EGL_ALPHA_SIZE,      8,
-    c.EGL_DEPTH_SIZE,      0,
-    c.EGL_STENCIL_SIZE,    8,
+    // c.EGL_DEPTH_SIZE,      0,
+    // c.EGL_STENCIL_SIZE,    8,
     c.EGL_NONE,
 };
 

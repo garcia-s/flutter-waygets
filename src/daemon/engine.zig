@@ -19,7 +19,6 @@ pub const YaraEngine = struct {
         try self.input_state.init();
         try self.wl.init(&self.input_state);
         try self.egl.init(self.wl.display);
-
         var gpa = std.heap.GeneralPurposeAllocator(.{}){};
         self.alloc = gpa.allocator();
 
@@ -34,6 +33,7 @@ pub const YaraEngine = struct {
             // Check if the entry is a directory
             if (entry.?.kind != .directory) continue;
 
+            std.debug.print("Hello from engine", .{});
             const e = try self.alloc.create(FLEngine);
 
             const path = try std.fmt.allocPrint(

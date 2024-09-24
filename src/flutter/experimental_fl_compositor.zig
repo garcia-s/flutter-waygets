@@ -28,27 +28,26 @@ fn create_backing_store_callback(
     );
 
     const glBindFramebuffer: c.PFNGLBINDFRAMEBUFFERPROC = @ptrCast(
-        c.eglGetProcAddress("glGenFrameBuffers"),
+        c.eglGetProcAddress("glBindFramebuffer"),
     );
 
+    var err: c_uint = undefined;
     const glFramebufferTexture2D: c.PFNGLFRAMEBUFFERTEXTURE2DPROC = @ptrCast(
         c.eglGetProcAddress("glFramebufferTexture2D"),
     );
 
-    var fb = c.FlutterOpenGLFramebuffer{
-        .target = c.GL_RENDERBUFFER,
-    };
+    // const glDrawBuffers: c.PFNGLDRAWBUFFERSPROC = @ptrCast(
+    //     c.eglGetProcAddress("glDrawBuffers"),
+    // );
+
+    var name: c_uint = undefined;
+    glGenFrameBuffers.?(1, &name);
+    glBindFramebuffer.?(c.GL_FRAMEBUFFER, @intCast(name));
 
     var tex: c_uint = 0;
-    glGenFrameBuffers.?(1, &fb.name);
-    glBindFramebuffer.?(c.GL_FRAMEBUFFER, fb.name);
 
-    c.glGenTextures(1, &tex);
+    c.glGenTextures(1, @ptrCast(&tex));
     c.glBindTexture(c.GL_TEXTURE_2D, tex);
-
-    // GLenum drawBuffers[1] = {GL_COLOR_ATTACHMENT0};
-    // fns->glDrawBuffers(1, drawBuffers);
-    // fns->glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
     c.glTexImage2D(
         c.GL_TEXTURE_2D,
@@ -57,10 +56,23 @@ fn create_backing_store_callback(
         @intFromFloat(conf.*.size.width),
         @intFromFloat(conf.*.size.height),
         0,
-        c.GL_BGRA_EXT,
+        c.GL_BGRA8_EXT,
         c.GL_UNSIGNED_BYTE,
         null,
     );
+
+    err = c.glGetError();
+    if (err != c.GL_NO_ERROR) {
+        std.debug.print("Error in glTexImage2D. {d}\n", .{err});
+    }
+
+    c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MIN_FILTER, c.GL_LINEAR);
+    c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MAG_FILTER, c.GL_LINEAR);
+
+    c.glBindTexture(c.GL_TEXTURE_2D, 0);
+    // var drawBuffers: c_int = c.GL_COLOR_ATTACHMENT0;
+    // glDrawBuffers.?(1, @ptrCast(&drawBuffers));
+    //
 
     glFramebufferTexture2D.?(
         c.GL_FRAMEBUFFER,
@@ -70,10 +82,29 @@ fn create_backing_store_callback(
         0,
     );
 
+    err = c.glGetError();
+    if (err != c.GL_NO_ERROR) {
+        std.debug.print("Error in buffertexture2d. {d}\n", .{err});
+    }
+
     if (glCheckFramebufferStatus.?(c.GL_FRAMEBUFFER) != c.GL_FRAMEBUFFER_COMPLETE) {
         std.debug.print("Framebuffer is incomplete.\n", .{});
         return false;
     }
+
+    glBindFramebuffer.?(c.GL_FRAMEBUFFER, 0);
+
+    // err = c.glGetError();
+    // if (err != c.GL_NO_ERROR) {
+    //     std.debug.print("Error in glTexImage2D. {d}\n", .{err});
+    // }
+    //
+
+    const fb = c.FlutterOpenGLFramebuffer{
+        .target = c.GL_TEXTURE_2D,
+        .name = name,
+        .destruction_callback = destroy_callback,
+    };
 
     store.*.struct_size = @sizeOf(c.FlutterBackingStore);
     store.*.type = c.kFlutterBackingStoreTypeOpenGL;
@@ -81,25 +112,29 @@ fn create_backing_store_callback(
     store.*.unnamed_0.open_gl = c.FlutterOpenGLBackingStore{};
     store.*.unnamed_0.open_gl.type = c.kFlutterOpenGLTargetTypeFramebuffer;
     store.*.unnamed_0.open_gl.unnamed_0.framebuffer = fb;
-
+    std.debug.print("Just before the return\n", .{});
     return true;
 }
 
-fn present_view_callback(info: [*c]const c.FlutterPresentViewInfo) callconv(.C) bool {
-    for (0..info.*.layers_count) |i| {
-        const layer = info.*.layers[i];
-        const backs: [*c]const c.FlutterBackingStore = layer.*.unnamed_0.backing_store.?;
-        const fb = backs.*.unnamed_0.open_gl.unnamed_0.framebuffer;
-        if (backs == null) {
-            continue;
-        }
+fn destroy_callback(_: ?*anyopaque) callconv(.C) void {}
 
-        //Unbind
-    }
+fn present_view_callback(_: [*c]const c.FlutterPresentViewInfo) callconv(.C) bool {
+    std.debug.print("Starting present callback\n", .{});
+    // for (0..info.*.layers_count) |i| {
+    // const layer = info.*.layers[i];
+    //const backs: [*c]const c.FlutterBackingStore = layer.*.unnamed_0.backing_store.?;
+    //const fb = backs.*.unnamed_0.open_gl.unnamed_0.framebuffer;
+    //if (backs == null) {
+    //   continue;
+    //}
+
+    //Unbind
+    //}
 
     // if (glCheckFramebufferStatus.?(c.GL_RENDERBUFFER) != c.GL_FRAMEBUFFER_COMPLETE) {
     //     std.debug.print("Framebuffer is incomplete.\n", .{});
     // }
+
     return true;
 }
 
