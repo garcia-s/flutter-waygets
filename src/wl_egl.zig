@@ -13,11 +13,11 @@ const config_attrib = [_]c.EGLint{
     c.EGL_NONE,
 };
 
-pub const WaylandEGL = struct {
+pub const WLEgl = struct {
     display: c.EGLDisplay = null,
     config: c.EGLConfig = null,
 
-    pub fn init(self: *WaylandEGL, wl_display: *c.wl_display) !void {
+    pub fn init(self: *WLEgl, wl_display: *c.wl_display) !void {
         self.display = c.eglGetDisplay(
             wl_display,
         );

@@ -36,6 +36,25 @@ pub const FLTaskRunner = struct {
     }
 };
 
+pub fn create_task_runners() *c.FlutterCustomTaskRunners {
+    return &c.FlutterCustomTaskRunners{
+        .struct_size = @sizeOf(c.FlutterCustomTaskRunners),
+        .render_task_runner = &c.FlutterTaskRunnerDescription{
+            .struct_size = @sizeOf(c.FlutterTaskRunnerDescription),
+            .user_data = &FLTaskRunner{},
+            .runs_task_on_current_thread_callback = &runs_task_on_current_thread,
+            .post_task_callback = &post_task_callback,
+        },
+
+        .platform_task_runner = &c.FlutterTaskRunnerDescription{
+            .struct_size = @sizeOf(c.FlutterTaskRunnerDescription),
+            .user_data = &FLTaskRunner{},
+            .runs_task_on_current_thread_callback = &runs_task_on_current_thread,
+            .post_task_callback = &post_task_callback,
+        },
+    };
+}
+
 pub fn post_task_callback(task: c.FlutterTask, _: u64, data: ?*anyopaque) callconv(.C) void {
     const runner: *FLTaskRunner = @ptrCast(@alignCast(data));
     runner.post_task(task) catch |err| {

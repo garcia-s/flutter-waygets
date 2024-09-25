@@ -10,7 +10,6 @@ pub const YaraEngine = struct {
     egl: WaylandEGL = WaylandEGL{},
     wl: WaylandManager = WaylandManager{},
 
-    //this might be modified by multiple threads
     input_state: InputState = InputState{},
     engines: std.StringHashMap(*FLEngine) = undefined,
 
@@ -19,6 +18,7 @@ pub const YaraEngine = struct {
         try self.input_state.init();
         try self.wl.init(&self.input_state);
         try self.egl.init(self.wl.display);
+
         var gpa = std.heap.GeneralPurposeAllocator(.{}){};
         self.alloc = gpa.allocator();
 
@@ -33,17 +33,15 @@ pub const YaraEngine = struct {
             // Check if the entry is a directory
             if (entry.?.kind != .directory) continue;
 
-            std.debug.print("Hello from engine", .{});
             const e = try self.alloc.create(FLEngine);
 
-            const path = try std.fmt.allocPrint(
-                self.alloc,
-                "{s}/{s}",
-                .{ args[1], entry.?.name },
-            );
-
             //Adding it to the input state
-            _ = try std.Thread.spawn(.{}, runProject, .{ e, path, self });
+            _ = try std.Thread.spawn(.{}, runProject, .{
+                e,
+                &args[1],
+                &entry.?.name,
+                self,
+            });
         }
 
         while (true) {
@@ -51,8 +49,13 @@ pub const YaraEngine = struct {
         }
     }
 
-    pub fn runProject(e: *FLEngine, path: []u8, engine: *YaraEngine) !void {
-        try e.init(path, engine);
+    pub fn runProject(
+        e: *FLEngine,
+        conf_path: *const []u8,
+        app_name: *const []const u8,
+        engine: *YaraEngine,
+    ) !void {
+        try e.init(conf_path, app_name, engine);
         try e.run();
     }
 };
