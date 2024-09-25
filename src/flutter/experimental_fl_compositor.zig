@@ -17,10 +17,7 @@ pub fn create_flutter_compositor(window: *FLWindow) c.FlutterCompositor {
 }
 
 pub fn create_backing_store_callback(
-    //Here we receive the size of of the render surface
-    //And we receive the view_id too
     conf: [*c]const c.FlutterBackingStoreConfig,
-    //output
     store: [*c]c.FlutterBackingStore,
     _: ?*anyopaque,
 ) callconv(.C) bool {
@@ -79,10 +76,6 @@ pub fn create_backing_store_callback(
     );
     //Why is this?
     c.glBindTexture(c.GL_TEXTURE_2D, 0);
-
-    // var drawBuffers: c_int = c.GL_COLOR_ATTACHMENT0;
-    // glDrawBuffers.?(1, @ptrCast(&drawBuffers));
-    //
 
     glFramebufferTexture2D.?(
         c.GL_FRAMEBUFFER,

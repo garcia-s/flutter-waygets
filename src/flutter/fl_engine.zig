@@ -4,17 +4,17 @@ const c = @import("../c_imports.zig").c;
 const FLWindow = @import("fl_window.zig").FLWindow;
 const WindowConfig = @import("../daemon/window_config.zig").WindowConfig;
 const WindowAnchors = @import("../daemon/window_config.zig").WindowAnchors;
-const create_flutter_compositor = @import("experimental_fl_compositor.zig").create_flutter_compositor;
 const tasks = @import("fl_task_runners.zig");
-//TODO: Move
+const FLRenderer = @import("fl_renderer.zig").FLRenderer;
 const loader = @import("../daemon/flutter_aot_loader.zig");
-const create_renderer_config = @import("fl_render_config.zig").create_renderer_config;
 const YaraEngine = @import("../daemon/engine.zig").YaraEngine;
+const create_renderer_config = @import("fl_render_config.zig").create_renderer_config;
+const create_flutter_compositor = @import("experimental_fl_compositor.zig").create_flutter_compositor;
+
 pub const FLEngine = struct {
     gpa: std.heap.GeneralPurposeAllocator(.{}) = undefined,
     alloc: std.mem.Allocator = undefined,
-    path: [][]u8 = undefined,
-    window: *FLWindow = undefined,
+    renderer: *FLRenderer = undefined,
     daemon: *YaraEngine = undefined,
     engine_args: c.FlutterProjectArgs = undefined,
     engine: c.FlutterEngine = undefined,
@@ -34,6 +34,7 @@ pub const FLEngine = struct {
             root_path,
             "flutter_assets",
         });
+
         const icu_path = try std.fmt.allocPrintZ(self.alloc, "{s}/{s}", .{
             root_path,
             "icudtl.dat",
@@ -97,24 +98,24 @@ pub const FLEngine = struct {
             &self.engine,
         );
 
-        self.engine_args.custom_task_runners = &c.FlutterCustomTaskRunners{
-            .struct_size = @sizeOf(c.FlutterCustomTaskRunners),
-            .render_task_runner = &c.FlutterTaskRunnerDescription{
-                .struct_size = @sizeOf(c.FlutterTaskRunnerDescription),
-                .user_data = self.renderer_runner,
-                .runs_task_on_current_thread_callback = tasks.runs_task_on_current_thread,
-                .post_task_callback = &tasks.post_task_callback,
-                .identifier = 1,
-            },
-
-            .platform_task_runner = &c.FlutterTaskRunnerDescription{
-                .struct_size = @sizeOf(c.FlutterTaskRunnerDescription),
-                .user_data = self.platform_runner,
-                .runs_task_on_current_thread_callback = tasks.runs_task_on_current_thread,
-                .post_task_callback = tasks.post_task_callback,
-                .identifier = 2,
-            },
-        };
+        // self.engine_args.custom_task_runners = &c.FlutterCustomTaskRunners{
+        //     .struct_size = @sizeOf(c.FlutterCustomTaskRunners),
+        //     .render_task_runner = &c.FlutterTaskRunnerDescription{
+        //         .struct_size = @sizeOf(c.FlutterTaskRunnerDescription),
+        //         .user_data = self.renderer_runner,
+        //         .runs_task_on_current_thread_callback = tasks.runs_task_on_current_thread,
+        //         .post_task_callback = &tasks.post_task_callback,
+        //         .identifier = 1,
+        //     },
+        //
+        //     .platform_task_runner = &c.FlutterTaskRunnerDescription{
+        //         .struct_size = @sizeOf(c.FlutterTaskRunnerDescription),
+        //         .user_data = self.platform_runner,
+        //         .runs_task_on_current_thread_callback = tasks.runs_task_on_current_thread,
+        //         .post_task_callback = tasks.post_task_callback,
+        //         .identifier = 2,
+        //     },
+        // };
 
         self.engine_args.compositor = @ptrCast(&create_flutter_compositor(self.window));
         const res = c.FlutterEngineInitialize(

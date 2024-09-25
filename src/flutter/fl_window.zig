@@ -8,9 +8,7 @@ const ctx_attrib: [*c]c.EGLint = @constCast(&[_]c.EGLint{
 });
 
 pub const FLWindow = struct {
-    fo: u2 = 0,
     state: WindowConfig = undefined,
-
     display: c.EGLDisplay = undefined,
 
     wl_layer_surface: *c.zwlr_layer_surface_v1 = undefined,
@@ -175,25 +173,11 @@ pub const FLWindow = struct {
             std.debug.print("Failed to create the EGL resource_surface\n", .{});
             return error.EglResourceSurfaceFailed;
         }
-
-        // if (c.wl_display_dispatch(display) < 0) {
-        //     std.debug.print("Failed to dispatch the layer engine\n", .{});
-        //     return error.LayerSurfaceFailed;
-        // }
     }
 };
 
-fn configure(
-    _: ?*anyopaque,
-    surface: ?*c.struct_zwlr_layer_surface_v1,
-    serial: u32,
-    _: u32,
-    _: u32,
-) callconv(.C) void {
-    c.zwlr_layer_surface_v1_ack_configure(
-        surface,
-        serial,
-    );
+fn configure(_: ?*anyopaque, surface: ?*c.struct_zwlr_layer_surface_v1, serial: u32, _: u32, _: u32) callconv(.C) void {
+    c.zwlr_layer_surface_v1_ack_configure(surface, serial);
 }
 
 fn closed(_: ?*anyopaque, _: ?*c.struct_zwlr_layer_surface_v1) callconv(.C) void {

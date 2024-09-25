@@ -55,8 +55,4 @@ pub const YaraEngine = struct {
         try e.init(path, engine);
         try e.run();
     }
-
-    pub fn reload() !void {}
 };
-
-fn render_callback(_: ?*anyopaque) callconv(.C) void {}
