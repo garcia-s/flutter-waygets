@@ -1,4 +1,4 @@
-const c = @import("../c_imports.zig").c;
+const c = @import("c_imports.zig").c;
 const std = @import("std");
 const FLWindow = @import("../flutter/fl_window.zig").FLWindow;
 const InputState = @import("input_state.zig").InputState;

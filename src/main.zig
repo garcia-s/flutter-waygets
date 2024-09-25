@@ -9,8 +9,8 @@ pub fn main() anyerror!void {
         return error.InvalidArguments;
     }
 
-    const embedder = FLEmbedder{};
-    embedder.run(args[1]) catch |err| {
+    var embedder = FLEmbedder{};
+    embedder.run(&args[1]) catch |err| {
         std.debug.print("Error running Flutter embedder: {?}\n ", .{err});
     };
 }

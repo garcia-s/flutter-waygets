@@ -1,18 +1,17 @@
-const c = @import("../c_imports.zig").c;
-const FLWindow = @import("fl_window.zig").FLWindow;
+const c = @import("c_imports.zig").c;
 const std = @import("std");
 pub const stubData = struct {
     fbo: *c_uint = undefined,
 };
 
-pub fn create_flutter_compositor(window: *FLWindow) c.FlutterCompositor {
+pub fn create_flutter_compositor() c.FlutterCompositor {
     return c.FlutterCompositor{
         .struct_size = @sizeOf(c.FlutterCompositor),
         .create_backing_store_callback = @ptrCast(&create_backing_store_callback),
         .present_view_callback = @ptrCast(&present_view_callback),
         .collect_backing_store_callback = @ptrCast(&collect_backing_store_callback),
         .avoid_backing_store_cache = false,
-        .user_data = @ptrCast(window),
+        // .user_data = @ptrCast(window),
     };
 }
 
@@ -153,8 +152,8 @@ pub fn present_view_callback(info: [*c]const c.FlutterPresentViewInfo) callconv(
         );
 
         glBindFramebuffer.?(c.GL_FRAMEBUFFER, 0);
-        const window: *FLWindow = @ptrCast(@alignCast(info.*.user_data));
-        _ = c.eglSwapBuffers(window.display, window.surface);
+        // const window: *FLWindow = @ptrCast(@alignCast(info.*.user_data));
+        // _ = c.eglSwapBuffers(window.display, window.surface);
     }
 
     return true;

@@ -1,4 +1,4 @@
-const c = @import("../c_imports.zig").c;
+const c = @import("c_imports.zig").c;
 const std = @import("std");
 
 const config_attrib = [_]c.EGLint{
@@ -16,6 +16,9 @@ const config_attrib = [_]c.EGLint{
 pub const WLEgl = struct {
     display: c.EGLDisplay = null,
     config: c.EGLConfig = null,
+    context: c.EGLContext = undefined,
+    resource_context: c.EGLContext = undefined,
+    //should have the contexts
 
     pub fn init(self: *WLEgl, wl_display: *c.wl_display) !void {
         self.display = c.eglGetDisplay(

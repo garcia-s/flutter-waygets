@@ -12,10 +12,9 @@ const create_flutter_compositor = @import("experimental_fl_compositor.zig").crea
 
 pub const FLEngine = struct {
     gpa: std.heap.GeneralPurposeAllocator(.{}) = undefined,
-    alloc: std.mem.Allocator = undefined,
     renderer: *FLRenderer = undefined,
     daemon: *YaraEngine = undefined,
-    engine_args: c.FlutterProjectArgs = undefined,
+    engine_args: c.flutterprojectargs = undefined,
     engine: c.FlutterEngine = undefined,
 
     pub fn init(self: *FLEngine, global_path: *const []u8, name: *const []const u8, _: *YaraEngine) !void {
@@ -39,60 +38,7 @@ pub const FLEngine = struct {
         std.debug.print("ICU: {s}\n", .{icu_path});
         std.debug.print("Assets: {s}\n", .{assets_path});
 
-        // const fd = try std.fs.cwd().openFile(global_path, .{ .mode = .read_only });
         //
-        // const buff = try fd.readToEndAlloc(self.alloc, 2048);
-        // defer self.alloc.free(buff);
-        //
-        // self.engine_args = c.FlutterProjectArgs{
-        //     .struct_size = @sizeOf(c.FlutterProjectArgs),
-        //     .assets_path = @ptrCast(assets_path.ptr),
-        //     .icu_data_path = @ptrCast(icu_path.ptr),
-        //     .platform_message_callback = platform_message_callback,
-        //     .channel_update_callback = channel_update_callback,
-        // };
-        //
-        // const aot_path = try std.fmt.allocPrint(self.alloc, "{s}{s}", .{
-        //     global_path,
-        //     "/lib/libapp.so",
-        // });
-        //
-        // if (c.FlutterEngineRunsAOTCompiledDartCode()) {
-        //     try loader.get_aot_data(
-        //         aot_path,
-        //         &self.engine_args.vm_snapshot_data,
-        //         &self.engine_args.vm_snapshot_instructions,
-        //         &self.engine_args.isolate_snapshot_data,
-        //         &self.engine_args.isolate_snapshot_instructions,
-        //     );
-        // }
-        //
-        // var config = c.FlutterRendererConfig{
-        //     .type = c.kOpenGL,
-        //     .unnamed_0 = .{ .open_gl = create_renderer_config() },
-        // };
-        //
-        // self.daemon = daemon;
-        // // self.engine_args.custom_task_runners = @ptrCast(&create_task_runners());
-        // self.engine_args.compositor = @ptrCast(&create_flutter_compositor(self.window));
-        //
-        // const res = c.FlutterEngineInitialize(
-        //     1,
-        //     &config,
-        //     &self.engine_args,
-        //     self.renderer,
-        //     &self.engine,
-        // );
-        //
-        // if (res != c.kSuccess) {
-        //     std.debug.print("Failed to initialize the engine", .{});
-        //     return error.FailedToRunFlutterEngine;
-        // }
-        //
-        // try self.daemon.input_state.map.put(
-        //     self.window.wl_surface,
-        //     self.engine,
-        // );
     }
 
     pub fn run(_: *FLEngine) !void {
@@ -126,6 +72,3 @@ pub const FLEngine = struct {
         // }
     }
 };
-
-fn platform_message_callback() callconv(.C) void {}
-fn channel_update_callback() callconv(.C) void {}

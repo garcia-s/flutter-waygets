@@ -1,6 +1,6 @@
-const c = @import("../c_imports.zig").c;
+const c = @import("c_imports.zig").c;
 const std = @import("std");
-const WaylandEGL = @import("wl_egl.zig").WaylandEGL;
+const WLEgl = @import("wl_egl.zig").WLEgl;
 const EGLWindow = @import("../flutter/fl_window.zig").FLWindow;
 const wl_keyboard_listener = @import("wl_keyboard_listener.zig").wl_keyboard_listener;
 const wl_registry_listener = @import("wl_registry_listener.zig").wl_registry_listener;
@@ -42,7 +42,8 @@ pub const WLManager = struct {
             std.debug.print("Failed to bind objects to registry", .{});
             return error.MissingGlobalObjects;
         }
-
+        //TODO: maybe move this out of here
+        //
         // const pointer = c.wl_seat_get_pointer(self.seat) orelse {
         //     std.debug.print("Failed to retrieve a pointer", .{});
         //     return error.ErrorRetrievingPointer;
