@@ -1,16 +1,16 @@
 const std = @import("std");
-const YaraEngine = @import("daemon/engine.zig").YaraEngine;
+const FLEmbedder = @import("embedder.zig").FLEmbedder;
 
 pub fn main() anyerror!void {
     const alloc = std.heap.page_allocator;
     const args = try std.process.argsAlloc(alloc);
 
-    if (args.len < 3) {
+    if (args.len < 2) {
         return error.InvalidArguments;
     }
 
-    var engine = FLEmbedder{};
-    engine.run(args) catch |err| {
+    const embedder = FLEmbedder{};
+    embedder.run(args[1]) catch |err| {
         std.debug.print("Error running Flutter embedder: {?}\n ", .{err});
     };
 }
