@@ -137,6 +137,7 @@ pub fn present_view_callback(info: [*c]const c.FlutterPresentViewInfo) callconv(
     std.debug.print("Info {any}\n", .{info.*.layers.*.*});
     for (0..info.*.layers_count) |i| {
         const layer = info.*.layers[i];
+        std.debug.print("Running Layers {?}\n", .{layer.*});
         const backs: [*c]const c.FlutterBackingStore = layer.*.unnamed_0.backing_store.?;
         const fb = backs.*.unnamed_0.open_gl.unnamed_0.framebuffer;
 
@@ -173,13 +174,6 @@ pub fn present_view_callback(info: [*c]const c.FlutterPresentViewInfo) callconv(
     _ = c.eglSwapBuffers(
         egl.display,
         window.surface,
-    );
-
-    _ = c.eglMakeCurrent(
-        egl.display,
-        c.EGL_NO_SURFACE,
-        c.EGL_NO_SURFACE,
-        c.EGL_NO_CONTEXT,
     );
 
     return true;

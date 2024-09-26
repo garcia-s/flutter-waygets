@@ -128,31 +128,8 @@ pub const FLEmbedder = struct {
             .physical_view_inset_bottom = 0,
             .physical_view_inset_left = 0,
             .display_id = 0,
-            .view_id = 1,
+            .view_id = 0,
         };
-
-        self.egl.windows[1] = FLWindow{};
-        try self.egl.windows[1].init(
-            self.wl.compositor,
-            self.wl.layer_shell,
-            self.egl.display,
-            self.egl.config,
-            &FLView{
-                .auto_initialize = false,
-                .width = 1920,
-                .height = 80,
-                .exclusive_zone = 300,
-                .layer = 2,
-                .keyboard_interactivity = 0,
-                .margin = .{ 0, 0, 0, 0 },
-                .anchors = .{
-                    .top = true,
-                    .left = false,
-                    .bottom = false,
-                    .right = false,
-                },
-            },
-        );
 
         var vue = c.FlutterWindowMetricsEvent{
             .struct_size = @sizeOf(c.FlutterWindowMetricsEvent),
@@ -173,8 +150,7 @@ pub const FLEmbedder = struct {
             c.FlutterAddViewInfo{
             .struct_size = @sizeOf(c.FlutterAddViewInfo),
             .view_id = 1,
-
-            .user_data = null,
+            .user_data = self,
             .add_view_callback = &add_view_callback,
             .view_metrics = @ptrCast(&vue),
         };
@@ -182,7 +158,8 @@ pub const FLEmbedder = struct {
         _ = c.FlutterEngineAddView(self.engine, @ptrCast(&info));
         _ = c.FlutterEngineSendWindowMetricsEvent(self.engine, &event);
         while (true) {
-            _ = c.FlutterEngineScheduleFrame(self.engine);
+            std.time.sleep(1e8);
+            std.debug.print("Running loop\n", .{});
             self.renderer.run_next_task();
             self.runner.run_next_task();
         }
@@ -195,9 +172,36 @@ pub const FLEmbedder = struct {
     }
 };
 
-fn add_view_callback(_: [*c]const c.FlutterAddViewResult) callconv(.C) void {}
+fn add_view_callback(res: [*c]const c.FlutterAddViewResult) callconv(.C) void {
+    std.debug.print("Add view result? {?}\n", .{res.*});
+    const self: *FLEmbedder = @ptrCast(@alignCast(res.*.user_data));
+
+    self.egl.windows[1] = FLWindow{};
+    self.egl.windows[1].init(
+        self.wl.compositor,
+        self.wl.layer_shell,
+        self.egl.display,
+        self.egl.config,
+        &FLView{
+            .auto_initialize = false,
+            .width = 1920,
+            .height = 80,
+            .exclusive_zone = 100,
+            .layer = 1,
+            .keyboard_interactivity = 0,
+            .margin = .{ 0, 0, 0, 0 },
+            .anchors = .{
+                .top = true,
+                .left = false,
+                .bottom = false,
+                .right = false,
+            },
+        },
+    ) catch
+        std.debug.print("Failed to create window", .{});
+}
 
 fn platform_message_callback(message: [*c]const c.FlutterPlatformMessage, _: ?*anyopaque) callconv(.C) void {
-    std.debug.print("Platform message received {*}\n", .{message});
+    std.debug.print("Platform message received {s}\n", .{message.*.message});
 }
 fn channel_update_callback() callconv(.C) void {}

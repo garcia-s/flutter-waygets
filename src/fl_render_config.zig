@@ -5,11 +5,13 @@ const std = @import("std");
 pub fn create_renderer_config() c.FlutterOpenGLRendererConfig {
     return c.FlutterOpenGLRendererConfig{
         .struct_size = @sizeOf(c.FlutterOpenGLRendererConfig),
-        .present_with_info = present,
+        .present = present,
         .make_current = make_current,
+        .make_resource_current = make_resource_current,
         .clear_current = clear_current,
         .fbo_callback = fbo_callback,
         .gl_proc_resolver = gl_proc_resolver,
+        .fbo_reset_after_present = true,
     };
 }
 
@@ -18,8 +20,8 @@ pub fn make_current(data: ?*anyopaque) callconv(.C) bool {
 
     const result = c.eglMakeCurrent(
         wlegl.display,
-        wlegl.windows[0].surface,
-        wlegl.windows[0].surface,
+        c.EGL_NO_SURFACE,
+        c.EGL_NO_SURFACE,
         wlegl.context,
     );
 
@@ -47,13 +49,13 @@ pub fn clear_current(data: ?*anyopaque) callconv(.C) bool {
     return true;
 }
 
-pub fn present(data: ?*anyopaque, _: [*c]const c.FlutterPresentInfo) callconv(.C) bool {
+pub fn present(data: ?*anyopaque) callconv(.C) bool {
     std.debug.print("Running present\n", .{});
     const wlegl: *WLEgl = @ptrCast(@alignCast(data));
 
     const result = c.eglSwapBuffers(
         wlegl.display,
-        wlegl.windows[0].surface,
+        c.EGL_NO_SURFACE,
     );
 
     if (result != c.EGL_TRUE) {
@@ -71,12 +73,11 @@ pub fn fbo_callback(_: ?*anyopaque) callconv(.C) u32 {
 // resource context setup.
 pub fn make_resource_current(data: ?*anyopaque) callconv(.C) bool {
     const wlegl: *WLEgl = @ptrCast(@alignCast(data));
-    std.debug.print("Running make resource {?}\n", .{wlegl.windows[0]});
 
     const result = c.eglMakeCurrent(
         wlegl.display,
-        wlegl.windows[0].resource_surface,
-        wlegl.windows[0].resource_surface,
+        c.EGL_NO_SURFACE,
+        c.EGL_NO_SURFACE,
         wlegl.resource_context,
     );
 
