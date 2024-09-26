@@ -37,8 +37,8 @@ pub fn create_backing_store_callback(
     const glFramebufferTexture2D: c.PFNGLFRAMEBUFFERTEXTURE2DPROC =
         @ptrCast(c.eglGetProcAddress("glFramebufferTexture2D"));
 
-    const glDrawBuffers: c.PFNGLDRAWBUFFERSPROC =
-        @ptrCast(c.eglGetProcAddress("glDrawBuffers"));
+    // const glDrawBuffers: c.PFNGLDRAWBUFFERSPROC =
+    //     @ptrCast(c.eglGetProcAddress("glDrawBuffers"));
 
     var name: c_uint = undefined;
     glGenFramebuffers.?(1, &name);
@@ -82,8 +82,8 @@ pub fn create_backing_store_callback(
         0,
     );
 
-    const drawBuffers: [1]c.GLenum = .{c.GL_COLOR_ATTACHMENT0};
-    glDrawBuffers.?(1, &drawBuffers);
+    // const drawBuffers: [1]c.GLenum = .{c.GL_COLOR_ATTACHMENT0};
+    // glDrawBuffers.?(1, &drawBuffers);
 
     if (glCheckFramebufferStatus.?(c.GL_FRAMEBUFFER) != c.GL_FRAMEBUFFER_COMPLETE) {
         std.debug.print("------------Framebuffer is incomplete------------\n", .{});
@@ -97,6 +97,8 @@ pub fn create_backing_store_callback(
         .name = name,
         .destruction_callback = destroy_callback,
     };
+
+    std.debug.print("------------Creating store------------\n", .{});
 
     store.*.struct_size = @sizeOf(c.FlutterBackingStore);
     store.*.type = c.kFlutterBackingStoreTypeOpenGL;
@@ -113,6 +115,17 @@ pub fn destroy_callback(_: ?*anyopaque) callconv(.C) void {}
 
 pub fn present_view_callback(info: [*c]const c.FlutterPresentViewInfo) callconv(.C) bool {
     std.debug.print("Running layer\n", .{});
+
+    const egl: *WLEgl = @ptrCast(@alignCast(info.*.user_data));
+    const window = egl.windows[@intCast(info.*.view_id)];
+
+    _ = c.eglMakeCurrent(
+        egl.display,
+        window.surface,
+        window.surface,
+        egl.context,
+    );
+
     const glBindFramebuffer: c.PFNGLBINDFRAMEBUFFERPROC = @ptrCast(
         c.eglGetProcAddress("glBindFramebuffer"),
     );
@@ -120,6 +133,8 @@ pub fn present_view_callback(info: [*c]const c.FlutterPresentViewInfo) callconv(
     const glBlitFramebuffer: c.PFNGLBLITFRAMEBUFFERPROC = @ptrCast(
         c.eglGetProcAddress("glBlitFramebuffer"),
     );
+
+    std.debug.print("Info {any}\n", .{info.*.layers.*.*});
     for (0..info.*.layers_count) |i| {
         const layer = info.*.layers[i];
         const backs: [*c]const c.FlutterBackingStore = layer.*.unnamed_0.backing_store.?;
@@ -131,6 +146,7 @@ pub fn present_view_callback(info: [*c]const c.FlutterPresentViewInfo) callconv(
 
         glBindFramebuffer.?(c.GL_READ_FRAMEBUFFER, fb.name);
         glBindFramebuffer.?(c.GL_DRAW_FRAMEBUFFER, 0);
+
         c.glViewport(
             0,
             0,
@@ -151,12 +167,20 @@ pub fn present_view_callback(info: [*c]const c.FlutterPresentViewInfo) callconv(
         );
 
         glBindFramebuffer.?(c.GL_FRAMEBUFFER, 0);
-        const egl: *WLEgl = @ptrCast(@alignCast(info.*.user_data));
-        _ = c.eglSwapBuffers(
-            egl.display,
-            egl.windows[@intCast(info.*.view_id)].surface,
-        );
+        std.debug.print("Layer {?}\n", .{info.*});
     }
+
+    _ = c.eglSwapBuffers(
+        egl.display,
+        window.surface,
+    );
+
+    _ = c.eglMakeCurrent(
+        egl.display,
+        c.EGL_NO_SURFACE,
+        c.EGL_NO_SURFACE,
+        c.EGL_NO_CONTEXT,
+    );
 
     return true;
 }

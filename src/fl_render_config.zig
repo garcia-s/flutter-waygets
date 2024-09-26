@@ -5,9 +5,8 @@ const std = @import("std");
 pub fn create_renderer_config() c.FlutterOpenGLRendererConfig {
     return c.FlutterOpenGLRendererConfig{
         .struct_size = @sizeOf(c.FlutterOpenGLRendererConfig),
+        .present_with_info = present,
         .make_current = make_current,
-        .present = present,
-        .make_resource_current = make_resource_current,
         .clear_current = clear_current,
         .fbo_callback = fbo_callback,
         .gl_proc_resolver = gl_proc_resolver,
@@ -15,7 +14,6 @@ pub fn create_renderer_config() c.FlutterOpenGLRendererConfig {
 }
 
 pub fn make_current(data: ?*anyopaque) callconv(.C) bool {
-    std.debug.print("Running make current\n", .{});
     const wlegl: *WLEgl = @ptrCast(@alignCast(data));
 
     const result = c.eglMakeCurrent(
@@ -49,7 +47,7 @@ pub fn clear_current(data: ?*anyopaque) callconv(.C) bool {
     return true;
 }
 
-pub fn present(data: ?*anyopaque) callconv(.C) bool {
+pub fn present(data: ?*anyopaque, _: [*c]const c.FlutterPresentInfo) callconv(.C) bool {
     std.debug.print("Running present\n", .{});
     const wlegl: *WLEgl = @ptrCast(@alignCast(data));
 
@@ -67,6 +65,7 @@ pub fn present(data: ?*anyopaque) callconv(.C) bool {
 }
 
 pub fn fbo_callback(_: ?*anyopaque) callconv(.C) u32 {
+    std.debug.print("Called fbo", .{});
     return 0;
 }
 // resource context setup.

@@ -31,7 +31,7 @@ pub const FLEmbedder = struct {
 
         //Init wayland stuff
         try self.wl.init();
-        // _ = try std.Thread.spawn(.{}, wl_loop, .{self.wl.display});
+        _ = try std.Thread.spawn(.{}, wl_loop, .{self.wl.display});
         //Init egl stuff
         try self.egl.init(self.wl.display);
 
@@ -77,25 +77,25 @@ pub const FLEmbedder = struct {
             .unnamed_0 = .{ .open_gl = create_renderer_config() },
         };
 
-        // try self.runner.init(
-        //     self.alloc,
-        //     std.Thread.getCurrentId(),
-        //     &self.engine,
-        // );
-        //
-        // try self.renderer.init(
-        //     self.alloc,
-        //     std.Thread.getCurrentId(),
-        //     &self.engine,
-        // );
-        //
-        // var runners = c.FlutterCustomTaskRunners{
-        //     .struct_size = @sizeOf(c.FlutterCustomTaskRunners),
-        //     .render_task_runner = @ptrCast(&task.create_fl_runner(&self.renderer)),
-        //     .platform_task_runner = @ptrCast(&task.create_fl_runner(&self.runner)),
-        // };
-        //
-        // args.custom_task_runners = @ptrCast(&runners);
+        try self.runner.init(
+            self.alloc,
+            std.Thread.getCurrentId(),
+            &self.engine,
+        );
+
+        try self.renderer.init(
+            self.alloc,
+            std.Thread.getCurrentId(),
+            &self.engine,
+        );
+
+        var runners = c.FlutterCustomTaskRunners{
+            .struct_size = @sizeOf(c.FlutterCustomTaskRunners),
+            .render_task_runner = @ptrCast(&task.create_fl_runner(&self.renderer)),
+            .platform_task_runner = @ptrCast(&task.create_fl_runner(&self.runner)),
+        };
+
+        args.custom_task_runners = @ptrCast(&runners);
         args.compositor = @ptrCast(&create_flutter_compositor(self.egl));
 
         const res = c.FlutterEngineInitialize(
@@ -128,10 +128,8 @@ pub const FLEmbedder = struct {
             .physical_view_inset_bottom = 0,
             .physical_view_inset_left = 0,
             .display_id = 0,
-            .view_id = 0,
+            .view_id = 1,
         };
-
-        _ = c.FlutterEngineSendWindowMetricsEvent(self.engine, &event);
 
         self.egl.windows[1] = FLWindow{};
         try self.egl.windows[1].init(
@@ -180,10 +178,11 @@ pub const FLEmbedder = struct {
             .add_view_callback = &add_view_callback,
             .view_metrics = @ptrCast(&vue),
         };
-        _ = c.FlutterEngineAddView(self.engine, @ptrCast(&info));
 
+        _ = c.FlutterEngineAddView(self.engine, @ptrCast(&info));
+        _ = c.FlutterEngineSendWindowMetricsEvent(self.engine, &event);
         while (true) {
-            std.time.sleep(5e8);
+            _ = c.FlutterEngineScheduleFrame(self.engine);
             self.renderer.run_next_task();
             self.runner.run_next_task();
         }
@@ -199,6 +198,6 @@ pub const FLEmbedder = struct {
 fn add_view_callback(_: [*c]const c.FlutterAddViewResult) callconv(.C) void {}
 
 fn platform_message_callback(message: [*c]const c.FlutterPlatformMessage, _: ?*anyopaque) callconv(.C) void {
-    std.debug.print("Hello {?}", .{message.*});
+    std.debug.print("Platform message received {*}\n", .{message});
 }
 fn channel_update_callback() callconv(.C) void {}

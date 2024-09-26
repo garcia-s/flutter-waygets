@@ -18,7 +18,7 @@ pub const FLTaskRunner = struct {
     thread: usize = undefined,
     alloc: std.mem.Allocator = undefined,
     engine: *c.FlutterEngine = undefined,
-    queue: std.ArrayList(*const c.FlutterTask) = undefined,
+    queue: std.ArrayList(c.FlutterTask) = undefined,
 
     pub fn init(
         self: *FLTaskRunner,
@@ -27,12 +27,12 @@ pub const FLTaskRunner = struct {
         engine: *c.FlutterEngine,
     ) !void {
         self.alloc = std.heap.page_allocator;
-        self.queue = std.ArrayList(*const c.FlutterTask).init(self.alloc);
+        self.queue = std.ArrayList(c.FlutterTask).init(self.alloc);
         self.thread = thread;
         self.engine = engine;
     }
 
-    pub fn post_task(self: *FLTaskRunner, task: *const c.FlutterTask) !void {
+    pub fn post_task(self: *FLTaskRunner, task: c.FlutterTask) !void {
         try self.queue.append(task);
     }
 
@@ -41,8 +41,8 @@ pub const FLTaskRunner = struct {
         if (task != null) self.run_flutter_task(task.?);
     }
 
-    fn run_flutter_task(self: *FLTaskRunner, task: *const c.FlutterTask) void {
-        const result = c.FlutterEngineRunTask(self.engine.*, task);
+    fn run_flutter_task(self: *FLTaskRunner, task: c.FlutterTask) void {
+        const result = c.FlutterEngineRunTask(self.engine.*, &task);
         if (result != c.kSuccess) {
             std.debug.print("Error running the task {?}\n ", .{task});
         }
@@ -51,7 +51,7 @@ pub const FLTaskRunner = struct {
 
 pub fn post_task_callback(task: c.FlutterTask, _: u64, data: ?*anyopaque) callconv(.C) void {
     const runner: *FLTaskRunner = @ptrCast(@alignCast(data));
-    runner.post_task(&task) catch |err| {
+    runner.post_task(task) catch |err| {
         std.debug.print("Error posting task: {}\n", .{err});
     };
 }
