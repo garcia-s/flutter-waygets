@@ -6,10 +6,11 @@ pub const FLWindow = struct {
     wl_layer_surface: *c.zwlr_layer_surface_v1 = undefined,
     wl_surface: *c.struct_wl_surface = undefined,
     window: *c.struct_wl_egl_window = undefined,
-    surface: c.EGLSurface = undefined,
 
     dummy_window: *c.struct_wl_egl_window = undefined,
     dummy_surface: *c.struct_wl_surface = undefined,
+
+    surface: c.EGLSurface = undefined,
     resource_surface: c.EGLSurface = undefined,
 
     pub fn init(
@@ -131,6 +132,7 @@ pub const FLWindow = struct {
 };
 
 fn configure(_: ?*anyopaque, surface: ?*c.struct_zwlr_layer_surface_v1, serial: u32, _: u32, _: u32) callconv(.C) void {
+    std.debug.print("ack is being called \n", .{});
     c.zwlr_layer_surface_v1_ack_configure(surface, serial);
 }
 

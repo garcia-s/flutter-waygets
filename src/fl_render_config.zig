@@ -20,8 +20,8 @@ pub fn make_current(data: ?*anyopaque) callconv(.C) bool {
 
     const result = c.eglMakeCurrent(
         wlegl.display,
-        c.EGL_NO_SURFACE,
-        c.EGL_NO_SURFACE,
+        wlegl.windows[0].surface,
+        wlegl.windows[0].surface,
         wlegl.context,
     );
 
@@ -55,7 +55,7 @@ pub fn present(data: ?*anyopaque) callconv(.C) bool {
 
     const result = c.eglSwapBuffers(
         wlegl.display,
-        c.EGL_NO_SURFACE,
+        wlegl.windows[0].surface,
     );
 
     if (result != c.EGL_TRUE) {
@@ -71,13 +71,13 @@ pub fn fbo_callback(_: ?*anyopaque) callconv(.C) u32 {
 }
 // resource context setup.
 pub fn make_resource_current(data: ?*anyopaque) callconv(.C) bool {
-    std.debug.print("Running make resource\n", .{});
     const wlegl: *WLEgl = @ptrCast(@alignCast(data));
+    std.debug.print("Running make resource {?}\n", .{wlegl.windows[0]});
 
     const result = c.eglMakeCurrent(
         wlegl.display,
-        c.EGL_NO_SURFACE,
-        c.EGL_NO_SURFACE,
+        wlegl.windows[0].resource_surface,
+        wlegl.windows[0].resource_surface,
         wlegl.resource_context,
     );
 

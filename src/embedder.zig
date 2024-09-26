@@ -31,6 +31,7 @@ pub const FLEmbedder = struct {
 
         //Init wayland stuff
         try self.wl.init();
+        _ = try std.Thread.spawn(.{}, wl_loop, .{self.wl.display});
         //Init egl stuff
         try self.egl.init(self.wl.display);
 
@@ -44,8 +45,8 @@ pub const FLEmbedder = struct {
             self.egl.config,
             implicit_view,
         );
-
         self.egl.windows[0] = window;
+
         const assets_path = try std.fmt.allocPrintZ(self.alloc, "{s}/{s}", .{
             path.*,
             "flutter_assets",
@@ -78,26 +79,26 @@ pub const FLEmbedder = struct {
             .unnamed_0 = .{ .open_gl = create_renderer_config() },
         };
 
-        try self.runner.init(
-            self.alloc,
-            std.Thread.getCurrentId(),
-            &self.engine,
-        );
-
-        try self.renderer.init(
-            self.alloc,
-            std.Thread.getCurrentId(),
-            &self.engine,
-        );
-
-        var runners = c.FlutterCustomTaskRunners{
-            .struct_size = @sizeOf(c.FlutterCustomTaskRunners),
-            .render_task_runner = @ptrCast(&task.create_fl_runner(&self.renderer)),
-            .platform_task_runner = @ptrCast(&task.create_fl_runner(&self.runner)),
-        };
-
-        args.custom_task_runners = @ptrCast(&runners);
-        args.compositor = @ptrCast(&create_flutter_compositor());
+        // try self.runner.init(
+        //     self.alloc,
+        //     std.Thread.getCurrentId(),
+        //     &self.engine,
+        // );
+        //
+        // try self.renderer.init(
+        //     self.alloc,
+        //     std.Thread.getCurrentId(),
+        //     &self.engine,
+        // );
+        //
+        // var runners = c.FlutterCustomTaskRunners{
+        //     .struct_size = @sizeOf(c.FlutterCustomTaskRunners),
+        //     .render_task_runner = @ptrCast(&task.create_fl_runner(&self.renderer)),
+        //     .platform_task_runner = @ptrCast(&task.create_fl_runner(&self.runner)),
+        // };
+        //
+        // args.custom_task_runners = @ptrCast(&runners);
+        // args.compositor = @ptrCast(&create_flutter_compositor(self.egl));
 
         const res = c.FlutterEngineInitialize(
             1,
@@ -117,11 +118,31 @@ pub const FLEmbedder = struct {
         self: *FLEmbedder,
     ) !void {
         _ = c.FlutterEngineRunInitialized(self.engine);
-
+        var event = c.FlutterWindowMetricsEvent{
+            .struct_size = @sizeOf(c.FlutterWindowMetricsEvent),
+            .width = 1920,
+            .height = 80,
+            .pixel_ratio = 1,
+            .left = 0,
+            .top = 0,
+            .physical_view_inset_top = 0,
+            .physical_view_inset_right = 0,
+            .physical_view_inset_bottom = 0,
+            .physical_view_inset_left = 0,
+            .display_id = 0,
+            .view_id = 0,
+        };
+        _ = c.FlutterEngineSendWindowMetricsEvent(self.engine, &event);
         while (true) {
             std.time.sleep(5e8);
             self.renderer.run_next_task();
             self.runner.run_next_task();
+        }
+    }
+
+    fn wl_loop(wl: *c.wl_display) void {
+        while (true) {
+            _ = c.wl_display_dispatch(wl);
         }
     }
 };

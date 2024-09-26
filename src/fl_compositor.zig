@@ -6,14 +6,14 @@ pub const stubData = struct {
     fbo: *c_uint = undefined,
 };
 
-pub fn create_flutter_compositor() c.FlutterCompositor {
+pub fn create_flutter_compositor(wl_egl: *WLEgl) c.FlutterCompositor {
     return c.FlutterCompositor{
         .struct_size = @sizeOf(c.FlutterCompositor),
         .create_backing_store_callback = @ptrCast(&create_backing_store_callback),
         .present_view_callback = @ptrCast(&present_view_callback),
         .collect_backing_store_callback = @ptrCast(&collect_backing_store_callback),
         .avoid_backing_store_cache = false,
-        // .user_data = @ptrCast(window),
+        .user_data = @ptrCast(wl_egl),
     };
 }
 
@@ -39,10 +39,6 @@ pub fn create_backing_store_callback(
 
     const glDrawBuffers: c.PFNGLDRAWBUFFERSPROC =
         @ptrCast(c.eglGetProcAddress("glDrawBuffers"));
-
-    // const glDrawBuffers: c.PFNGLDRAWBUFFERSPROC = @ptrCast(
-    //     c.eglGetProcAddress("glDrawBuffers"),
-    // );
 
     var name: c_uint = undefined;
     glGenFramebuffers.?(1, &name);
@@ -116,6 +112,7 @@ pub fn create_backing_store_callback(
 pub fn destroy_callback(_: ?*anyopaque) callconv(.C) void {}
 
 pub fn present_view_callback(info: [*c]const c.FlutterPresentViewInfo) callconv(.C) bool {
+    std.debug.print("Running layer\n", .{});
     const glBindFramebuffer: c.PFNGLBINDFRAMEBUFFERPROC = @ptrCast(
         c.eglGetProcAddress("glBindFramebuffer"),
     );
@@ -150,12 +147,15 @@ pub fn present_view_callback(info: [*c]const c.FlutterPresentViewInfo) callconv(
             @intFromFloat(layer.*.size.width),
             @intFromFloat(layer.*.size.height),
             c.GL_COLOR_BUFFER_BIT, // Copy the color buffer
-            c.GL_NEAREST, // Nearest filtering
+            c.GL_LINEAR, // Nearest filtering
         );
 
         glBindFramebuffer.?(c.GL_FRAMEBUFFER, 0);
         const egl: *WLEgl = @ptrCast(@alignCast(info.*.user_data));
-        _ = c.eglSwapBuffers(egl.display, egl.windows[@intCast(info.*.view_id)].surface);
+        _ = c.eglSwapBuffers(
+            egl.display,
+            egl.windows[@intCast(info.*.view_id)].surface,
+        );
     }
 
     return true;
