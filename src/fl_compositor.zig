@@ -1,5 +1,7 @@
 const c = @import("c_imports.zig").c;
 const std = @import("std");
+const WLEgl = @import("wl_egl.zig").WLEgl;
+
 pub const stubData = struct {
     fbo: *c_uint = undefined,
 };
@@ -152,8 +154,8 @@ pub fn present_view_callback(info: [*c]const c.FlutterPresentViewInfo) callconv(
         );
 
         glBindFramebuffer.?(c.GL_FRAMEBUFFER, 0);
-        // const window: *FLWindow = @ptrCast(@alignCast(info.*.user_data));
-        // _ = c.eglSwapBuffers(window.display, window.surface);
+        const egl: *WLEgl = @ptrCast(@alignCast(info.*.user_data));
+        _ = c.eglSwapBuffers(egl.display, egl.windows[@intCast(info.*.view_id)].surface);
     }
 
     return true;

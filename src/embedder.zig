@@ -34,16 +34,18 @@ pub const FLEmbedder = struct {
         //Init egl stuff
         try self.egl.init(self.wl.display);
 
-        self.egl.windows = std.ArrayList(*FLWindow).init(self.alloc);
+        self.egl.windows = try self.alloc.alloc(*FLWindow, 3);
 
         var window = try self.alloc.create(FLWindow);
         try window.init(
             self.wl.compositor,
             self.wl.layer_shell,
+            self.egl.display,
+            self.egl.config,
             implicit_view,
         );
 
-        try self.egl.windows.append(window);
+        self.egl.windows[0] = window;
         const assets_path = try std.fmt.allocPrintZ(self.alloc, "{s}/{s}", .{
             path.*,
             "flutter_assets",

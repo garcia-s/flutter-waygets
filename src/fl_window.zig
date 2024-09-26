@@ -16,6 +16,8 @@ pub const FLWindow = struct {
         self: *FLWindow,
         compositor: *c.struct_wl_compositor,
         layer_shell: *c.struct_zwlr_layer_shell_v1,
+        display: c.EGLDisplay,
+        config: c.EGLConfig,
         state: *const FLView,
     ) !void {
         self.wl_surface = c.wl_compositor_create_surface(compositor) orelse {
@@ -95,15 +97,13 @@ pub const FLWindow = struct {
             std.debug.print("Error creating dummy window", .{});
             return error.GetEglPlatformWindowFailed;
         };
-    }
 
-    pub fn commit(self: *FLWindow, config: c.EGLConfig) !void {
         c.wl_surface_commit(self.wl_surface);
 
         const surface_attrib = [_]c.EGLint{c.EGL_NONE};
 
         self.surface = c.eglCreateWindowSurface(
-            self.display,
+            display,
             config,
             self.window,
             &surface_attrib,
@@ -115,7 +115,7 @@ pub const FLWindow = struct {
         }
 
         self.resource_surface = c.eglCreateWindowSurface(
-            self.display,
+            display,
             config,
             self.dummy_window,
             &surface_attrib,

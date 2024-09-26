@@ -26,7 +26,7 @@ pub const WLEgl = struct {
     config: c.EGLConfig = null,
     context: c.EGLContext = undefined,
     resource_context: c.EGLContext = undefined,
-    windows: std.ArrayList(*FLWindow) = undefined,
+    windows: []*FLWindow = undefined,
     //should have the contexts
 
     pub fn init(self: *WLEgl, wl_display: *c.wl_display) !void {
