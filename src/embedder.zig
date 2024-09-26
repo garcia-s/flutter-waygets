@@ -4,8 +4,10 @@ const WLManager = @import("wl_manager.zig").WLManager;
 const WLEgl = @import("wl_egl.zig").WLEgl;
 const get_aot_data = @import("fl_aot.zig").get_aot_data;
 const create_renderer_config = @import("fl_render_config.zig").create_renderer_config;
-const create_task_runners = @import("fl_task_runners.zig").create_task_runners;
+const task = @import("fl_task_runners.zig");
 const create_flutter_compositor = @import("fl_compositor.zig").create_flutter_compositor;
+const FLView = @import("fl_view.zig").FLView;
+const FLWindow = @import("fl_window.zig").FLWindow;
 
 pub const FLEmbedder = struct {
     alloc: std.mem.Allocator = undefined,
@@ -13,7 +15,14 @@ pub const FLEmbedder = struct {
     egl: *WLEgl = undefined,
     engine: c.FlutterEngine = undefined,
 
-    pub fn run(self: *FLEmbedder, path: *[:0]u8) !void {
+    renderer: task.FLTaskRunner = task.FLTaskRunner{},
+    runner: task.FLTaskRunner = task.FLTaskRunner{},
+
+    pub fn init(
+        self: *FLEmbedder,
+        path: *[:0]u8,
+        implicit_view: *const FLView,
+    ) !void {
         var gpa = std.heap.GeneralPurposeAllocator(.{}){};
         self.alloc = gpa.allocator();
 
@@ -25,6 +34,16 @@ pub const FLEmbedder = struct {
         //Init egl stuff
         try self.egl.init(self.wl.display);
 
+        self.egl.windows = std.ArrayList(*FLWindow).init(self.alloc);
+
+        var window = try self.alloc.create(FLWindow);
+        try window.init(
+            self.wl.compositor,
+            self.wl.layer_shell,
+            implicit_view,
+        );
+
+        try self.egl.windows.append(window);
         const assets_path = try std.fmt.allocPrintZ(self.alloc, "{s}/{s}", .{
             path.*,
             "flutter_assets",
@@ -54,13 +73,30 @@ pub const FLEmbedder = struct {
 
         var config = c.FlutterRendererConfig{
             .type = c.kOpenGL,
-            // .unnamed_0 = .{ .open_gl = create_renderer_config() },
+            .unnamed_0 = .{ .open_gl = create_renderer_config() },
         };
 
-        //
-        create_task_runners(&args.custom_task_runners);
+        try self.runner.init(
+            self.alloc,
+            std.Thread.getCurrentId(),
+            &self.engine,
+        );
+
+        try self.renderer.init(
+            self.alloc,
+            std.Thread.getCurrentId(),
+            &self.engine,
+        );
+
+        var runners = c.FlutterCustomTaskRunners{
+            .struct_size = @sizeOf(c.FlutterCustomTaskRunners),
+            .render_task_runner = @ptrCast(&task.create_fl_runner(&self.renderer)),
+            .platform_task_runner = @ptrCast(&task.create_fl_runner(&self.runner)),
+        };
+
+        args.custom_task_runners = @ptrCast(&runners);
         args.compositor = @ptrCast(&create_flutter_compositor());
-        //I need the context and surfaces before the thing
+
         const res = c.FlutterEngineInitialize(
             1,
             &config,
@@ -69,11 +105,22 @@ pub const FLEmbedder = struct {
             &self.engine,
         );
 
+        //I need the context and surfaces before the thing
         if (res != c.kSuccess) {
             return error.FailedToRunFlutterEngine;
         }
+    }
 
+    pub fn run(
+        self: *FLEmbedder,
+    ) !void {
         _ = c.FlutterEngineRunInitialized(self.engine);
+
+        while (true) {
+            std.time.sleep(5e8);
+            self.renderer.run_next_task();
+            self.runner.run_next_task();
+        }
     }
 };
 
