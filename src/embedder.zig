@@ -31,21 +31,19 @@ pub const FLEmbedder = struct {
 
         //Init wayland stuff
         try self.wl.init();
-        _ = try std.Thread.spawn(.{}, wl_loop, .{self.wl.display});
+        // _ = try std.Thread.spawn(.{}, wl_loop, .{self.wl.display});
         //Init egl stuff
         try self.egl.init(self.wl.display);
 
-        self.egl.windows = try self.alloc.alloc(*FLWindow, 3);
-
-        var window = try self.alloc.create(FLWindow);
-        try window.init(
+        self.egl.windows = try self.alloc.alloc(FLWindow, 5);
+        self.egl.windows[0] = FLWindow{};
+        try self.egl.windows[0].init(
             self.wl.compositor,
             self.wl.layer_shell,
             self.egl.display,
             self.egl.config,
             implicit_view,
         );
-        self.egl.windows[0] = window;
 
         const assets_path = try std.fmt.allocPrintZ(self.alloc, "{s}/{s}", .{
             path.*,
@@ -98,7 +96,7 @@ pub const FLEmbedder = struct {
         // };
         //
         // args.custom_task_runners = @ptrCast(&runners);
-        // args.compositor = @ptrCast(&create_flutter_compositor(self.egl));
+        args.compositor = @ptrCast(&create_flutter_compositor(self.egl));
 
         const res = c.FlutterEngineInitialize(
             1,
@@ -132,7 +130,58 @@ pub const FLEmbedder = struct {
             .display_id = 0,
             .view_id = 0,
         };
+
         _ = c.FlutterEngineSendWindowMetricsEvent(self.engine, &event);
+
+        self.egl.windows[1] = FLWindow{};
+        try self.egl.windows[1].init(
+            self.wl.compositor,
+            self.wl.layer_shell,
+            self.egl.display,
+            self.egl.config,
+            &FLView{
+                .auto_initialize = false,
+                .width = 1920,
+                .height = 80,
+                .exclusive_zone = 300,
+                .layer = 2,
+                .keyboard_interactivity = 0,
+                .margin = .{ 0, 0, 0, 0 },
+                .anchors = .{
+                    .top = true,
+                    .left = false,
+                    .bottom = false,
+                    .right = false,
+                },
+            },
+        );
+
+        var vue = c.FlutterWindowMetricsEvent{
+            .struct_size = @sizeOf(c.FlutterWindowMetricsEvent),
+            .width = 1920,
+            .height = 80,
+            .pixel_ratio = 1,
+            .left = 0,
+            .top = 0,
+            .physical_view_inset_top = 0,
+            .physical_view_inset_right = 0,
+            .physical_view_inset_bottom = 0,
+            .physical_view_inset_left = 0,
+            .display_id = 0,
+            .view_id = 1,
+        };
+
+        var info =
+            c.FlutterAddViewInfo{
+            .struct_size = @sizeOf(c.FlutterAddViewInfo),
+            .view_id = 1,
+
+            .user_data = null,
+            .add_view_callback = &add_view_callback,
+            .view_metrics = @ptrCast(&vue),
+        };
+        _ = c.FlutterEngineAddView(self.engine, @ptrCast(&info));
+
         while (true) {
             std.time.sleep(5e8);
             self.renderer.run_next_task();
@@ -146,6 +195,8 @@ pub const FLEmbedder = struct {
         }
     }
 };
+
+fn add_view_callback(_: [*c]const c.FlutterAddViewResult) callconv(.C) void {}
 
 fn platform_message_callback(message: [*c]const c.FlutterPlatformMessage, _: ?*anyopaque) callconv(.C) void {
     std.debug.print("Hello {?}", .{message.*});
