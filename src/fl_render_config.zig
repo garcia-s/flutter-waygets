@@ -20,8 +20,8 @@ pub fn make_current(data: ?*anyopaque) callconv(.C) bool {
 
     const result = c.eglMakeCurrent(
         wlegl.display,
-        c.EGL_NO_SURFACE,
-        c.EGL_NO_SURFACE,
+        wlegl.windows[0].surface,
+        wlegl.windows[0].surface,
         wlegl.context,
     );
 
@@ -55,7 +55,19 @@ pub fn present(data: ?*anyopaque) callconv(.C) bool {
 
     const result = c.eglSwapBuffers(
         wlegl.display,
-        c.EGL_NO_SURFACE,
+        wlegl.windows[0].surface,
+    );
+
+    _ = c.eglMakeCurrent(
+        wlegl.display,
+        wlegl.windows[1].surface,
+        wlegl.windows[1].surface,
+        wlegl.context,
+    );
+
+    _ = c.eglSwapBuffers(
+        wlegl.display,
+        wlegl.windows[1].surface,
     );
 
     if (result != c.EGL_TRUE) {

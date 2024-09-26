@@ -114,8 +114,6 @@ pub fn create_backing_store_callback(
 pub fn destroy_callback(_: ?*anyopaque) callconv(.C) void {}
 
 pub fn present_view_callback(info: [*c]const c.FlutterPresentViewInfo) callconv(.C) bool {
-    std.debug.print("Running layer\n", .{});
-
     const egl: *WLEgl = @ptrCast(@alignCast(info.*.user_data));
     const window = egl.windows[@intCast(info.*.view_id)];
 
@@ -133,8 +131,7 @@ pub fn present_view_callback(info: [*c]const c.FlutterPresentViewInfo) callconv(
     const glBlitFramebuffer: c.PFNGLBLITFRAMEBUFFERPROC = @ptrCast(
         c.eglGetProcAddress("glBlitFramebuffer"),
     );
-
-    std.debug.print("Info {any}\n", .{info.*.layers.*.*});
+    std.debug.print("Layer {?}\n", .{info.*});
     for (0..info.*.layers_count) |i| {
         const layer = info.*.layers[i];
         std.debug.print("Running Layers {?}\n", .{layer.*});
@@ -168,7 +165,6 @@ pub fn present_view_callback(info: [*c]const c.FlutterPresentViewInfo) callconv(
         );
 
         glBindFramebuffer.?(c.GL_FRAMEBUFFER, 0);
-        std.debug.print("Layer {?}\n", .{info.*});
     }
 
     _ = c.eglSwapBuffers(

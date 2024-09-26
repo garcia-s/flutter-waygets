@@ -8,6 +8,8 @@ const task = @import("fl_task_runners.zig");
 const create_flutter_compositor = @import("fl_compositor.zig").create_flutter_compositor;
 const FLView = @import("fl_view.zig").FLView;
 const FLWindow = @import("fl_window.zig").FLWindow;
+const InputState = @import("input_state.zig").InputState;
+const wl_pointer_listener = @import("wl_pointer_listener.zig").wl_pointer_listener;
 
 pub const FLEmbedder = struct {
     alloc: std.mem.Allocator = undefined,
@@ -15,6 +17,7 @@ pub const FLEmbedder = struct {
     egl: *WLEgl = undefined,
     engine: c.FlutterEngine = undefined,
 
+    input: InputState = InputState{},
     renderer: task.FLTaskRunner = task.FLTaskRunner{},
     runner: task.FLTaskRunner = task.FLTaskRunner{},
 
@@ -27,13 +30,27 @@ pub const FLEmbedder = struct {
         self.alloc = gpa.allocator();
 
         self.wl = try self.alloc.create(WLManager);
+
         self.egl = try self.alloc.create(WLEgl);
 
         //Init wayland stuff
         try self.wl.init();
+
+        const pointer = c.wl_seat_get_pointer(self.wl.seat) orelse {
+            std.debug.print("Failed to retrieve a pointer", .{});
+            return error.ErrorRetrievingPointer;
+        };
+
+        _ = c.wl_pointer_add_listener(
+            pointer,
+            &wl_pointer_listener,
+            &self.input,
+        );
+
         _ = try std.Thread.spawn(.{}, wl_loop, .{self.wl.display});
         //Init egl stuff
         try self.egl.init(self.wl.display);
+        try self.input.init();
 
         self.egl.windows = try self.alloc.alloc(FLWindow, 5);
         self.egl.windows[0] = FLWindow{};
@@ -44,6 +61,8 @@ pub const FLEmbedder = struct {
             self.egl.config,
             implicit_view,
         );
+
+        try self.input.map.put(self.egl.windows[0].wl_surface, &self.engine);
 
         const assets_path = try std.fmt.allocPrintZ(self.alloc, "{s}/{s}", .{
             path.*,
@@ -88,14 +107,15 @@ pub const FLEmbedder = struct {
             std.Thread.getCurrentId(),
             &self.engine,
         );
+        // var runner = task.create_fl_runner(&self.runner);
+        //
+        // var runners = c.FlutterCustomTaskRunners{
+        //     .struct_size = @sizeOf(c.FlutterCustomTaskRunners),
+        //     .render_task_runner = @ptrCast(&runner),
+        //     .platform_task_runner = @ptrCast(&runner),
+        // };
 
-        var runners = c.FlutterCustomTaskRunners{
-            .struct_size = @sizeOf(c.FlutterCustomTaskRunners),
-            .render_task_runner = @ptrCast(&task.create_fl_runner(&self.renderer)),
-            .platform_task_runner = @ptrCast(&task.create_fl_runner(&self.runner)),
-        };
-
-        args.custom_task_runners = @ptrCast(&runners);
+        // args.custom_task_runners = @ptrCast(&runners);
         args.compositor = @ptrCast(&create_flutter_compositor(self.egl));
 
         const res = c.FlutterEngineInitialize(
@@ -131,36 +151,9 @@ pub const FLEmbedder = struct {
             .view_id = 0,
         };
 
-        var vue = c.FlutterWindowMetricsEvent{
-            .struct_size = @sizeOf(c.FlutterWindowMetricsEvent),
-            .width = 1920,
-            .height = 80,
-            .pixel_ratio = 1,
-            .left = 0,
-            .top = 0,
-            .physical_view_inset_top = 0,
-            .physical_view_inset_right = 0,
-            .physical_view_inset_bottom = 0,
-            .physical_view_inset_left = 0,
-            .display_id = 0,
-            .view_id = 1,
-        };
-
-        var info =
-            c.FlutterAddViewInfo{
-            .struct_size = @sizeOf(c.FlutterAddViewInfo),
-            .view_id = 1,
-            .user_data = self,
-            .add_view_callback = &add_view_callback,
-            .view_metrics = @ptrCast(&vue),
-        };
-
-        _ = c.FlutterEngineAddView(self.engine, @ptrCast(&info));
         _ = c.FlutterEngineSendWindowMetricsEvent(self.engine, &event);
+
         while (true) {
-            std.time.sleep(1e8);
-            std.debug.print("Running loop\n", .{});
-            self.renderer.run_next_task();
             self.runner.run_next_task();
         }
     }
@@ -172,36 +165,4 @@ pub const FLEmbedder = struct {
     }
 };
 
-fn add_view_callback(res: [*c]const c.FlutterAddViewResult) callconv(.C) void {
-    std.debug.print("Add view result? {?}\n", .{res.*});
-    const self: *FLEmbedder = @ptrCast(@alignCast(res.*.user_data));
-
-    self.egl.windows[1] = FLWindow{};
-    self.egl.windows[1].init(
-        self.wl.compositor,
-        self.wl.layer_shell,
-        self.egl.display,
-        self.egl.config,
-        &FLView{
-            .auto_initialize = false,
-            .width = 1920,
-            .height = 80,
-            .exclusive_zone = 100,
-            .layer = 1,
-            .keyboard_interactivity = 0,
-            .margin = .{ 0, 0, 0, 0 },
-            .anchors = .{
-                .top = true,
-                .left = false,
-                .bottom = false,
-                .right = false,
-            },
-        },
-    ) catch
-        std.debug.print("Failed to create window", .{});
-}
-
-fn platform_message_callback(message: [*c]const c.FlutterPlatformMessage, _: ?*anyopaque) callconv(.C) void {
-    std.debug.print("Platform message received {s}\n", .{message.*.message});
-}
 fn channel_update_callback() callconv(.C) void {}

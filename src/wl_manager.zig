@@ -4,7 +4,6 @@ const WLEgl = @import("wl_egl.zig").WLEgl;
 const EGLWindow = @import("../flutter/fl_window.zig").FLWindow;
 const wl_keyboard_listener = @import("wl_keyboard_listener.zig").wl_keyboard_listener;
 const wl_registry_listener = @import("wl_registry_listener.zig").wl_registry_listener;
-const wl_pointer_listener = @import("wl_pointer_listener.zig").wl_pointer_listener;
 
 pub const WLManager = struct {
     display: *c.wl_display = undefined,
@@ -44,16 +43,6 @@ pub const WLManager = struct {
         }
         //TODO: maybe move this out of here
         //
-        // const pointer = c.wl_seat_get_pointer(self.seat) orelse {
-        //     std.debug.print("Failed to retrieve a pointer", .{});
-        //     return error.ErrorRetrievingPointer;
-        // };
-
-        // _ = c.wl_pointer_add_listener(
-        //     pointer,
-        //     &wl_pointer_listener,
-        //     input_state,
-        // );
 
         // const keyboard = c.wl_seat_get_keyboard(self.seat) orelse {
         //     return error.ErrorRetrievingKeyboard;
