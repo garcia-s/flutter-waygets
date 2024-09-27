@@ -116,6 +116,7 @@ pub const FLEmbedder = struct {
     pub fn run(self: *FLEmbedder) !void {
         _ = c.FlutterEngineRunInitialized(self.engine);
         while (true) {
+            std.time.sleep(1e8);
             self.runner.run_next_task();
         }
     }
