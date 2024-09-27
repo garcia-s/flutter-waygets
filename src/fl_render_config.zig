@@ -1,5 +1,5 @@
 const c = @import("c_imports.zig").c;
-const WLEgl = @import("wl_egl.zig").WLEgl;
+const FLEmbedder = @import("embedder.zig").FLEmbedder;
 const std = @import("std");
 
 pub fn create_renderer_config() c.FlutterOpenGLRendererConfig {
@@ -16,13 +16,13 @@ pub fn create_renderer_config() c.FlutterOpenGLRendererConfig {
 }
 
 pub fn make_current(data: ?*anyopaque) callconv(.C) bool {
-    const wlegl: *WLEgl = @ptrCast(@alignCast(data));
+    const embedder: *FLEmbedder = @ptrCast(@alignCast(data));
 
     const result = c.eglMakeCurrent(
-        wlegl.display,
-        wlegl.windows[0].surface,
-        wlegl.windows[0].surface,
-        wlegl.context,
+        embedder.egl.display,
+        c.EGL_NO_SURFACE,
+        c.EGL_NO_SURFACE,
+        embedder.egl.context,
     );
 
     if (result != c.EGL_TRUE) {
@@ -33,10 +33,10 @@ pub fn make_current(data: ?*anyopaque) callconv(.C) bool {
 }
 
 pub fn clear_current(data: ?*anyopaque) callconv(.C) bool {
-    const wlegl: *WLEgl = @ptrCast(@alignCast(data));
+    const embedder: *FLEmbedder = @ptrCast(@alignCast(data));
 
     const result = c.eglMakeCurrent(
-        wlegl.display,
+        embedder.egl.display,
         c.EGL_NO_SURFACE,
         c.EGL_NO_SURFACE,
         c.EGL_NO_CONTEXT,
@@ -50,24 +50,11 @@ pub fn clear_current(data: ?*anyopaque) callconv(.C) bool {
 }
 
 pub fn present(data: ?*anyopaque) callconv(.C) bool {
-    std.debug.print("Running present\n", .{});
-    const wlegl: *WLEgl = @ptrCast(@alignCast(data));
+    const embedder: *FLEmbedder = @ptrCast(@alignCast(data));
 
     const result = c.eglSwapBuffers(
-        wlegl.display,
-        wlegl.windows[0].surface,
-    );
-
-    _ = c.eglMakeCurrent(
-        wlegl.display,
-        wlegl.windows[1].surface,
-        wlegl.windows[1].surface,
-        wlegl.context,
-    );
-
-    _ = c.eglSwapBuffers(
-        wlegl.display,
-        wlegl.windows[1].surface,
+        embedder.egl.display,
+        c.EGL_NO_SURFACE,
     );
 
     if (result != c.EGL_TRUE) {
@@ -79,18 +66,17 @@ pub fn present(data: ?*anyopaque) callconv(.C) bool {
 }
 
 pub fn fbo_callback(_: ?*anyopaque) callconv(.C) u32 {
-    std.debug.print("Called fbo", .{});
     return 0;
 }
 // resource context setup.
 pub fn make_resource_current(data: ?*anyopaque) callconv(.C) bool {
-    const wlegl: *WLEgl = @ptrCast(@alignCast(data));
+    const embedder: *FLEmbedder = @ptrCast(@alignCast(data));
 
     const result = c.eglMakeCurrent(
-        wlegl.display,
+        embedder.egl.display,
         c.EGL_NO_SURFACE,
         c.EGL_NO_SURFACE,
-        wlegl.resource_context,
+        embedder.egl.resource_context,
     );
 
     if (result == c.EGL_FALSE) {
@@ -105,6 +91,7 @@ pub fn gl_proc_resolver(_: ?*anyopaque, proc_name: [*c]const u8) callconv(.C) ?*
     const result: ?*anyopaque = @ptrCast(@constCast(
         c.eglGetProcAddress(proc_name),
     ));
+
     if (result != null) return result;
     std.debug.print("Error resolving process name {x}", .{c.eglGetError()});
     return null;

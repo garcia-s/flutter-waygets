@@ -19,7 +19,7 @@ pub const FLWindow = struct {
         layer_shell: *c.struct_zwlr_layer_shell_v1,
         display: c.EGLDisplay,
         config: c.EGLConfig,
-        state: *const FLView,
+        view: *const FLView,
     ) !void {
         self.wl_surface = c.wl_compositor_create_surface(compositor) orelse {
             std.debug.print("failed to get a wayland surface\n", .{});
@@ -35,8 +35,8 @@ pub const FLWindow = struct {
             layer_shell,
             self.wl_surface,
             null,
-            state.layer,
-            "yara_layer",
+            view.layer,
+            view.name,
         ) orelse {
             std.debug.print("Failed to initialize a layer surface\n", .{});
             return error.LayerSurfaceFailed;
@@ -53,10 +53,11 @@ pub const FLWindow = struct {
             null,
         );
 
-        const anchor_mask: u32 = @intCast(c.ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP * @intFromBool(state.anchors.top) |
-            c.ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT * @intFromBool(state.anchors.left) |
-            c.ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM * @intFromBool(state.anchors.bottom) |
-            c.ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT * @intFromBool(state.anchors.right));
+        const anchor_mask: u32 =
+            @intCast(c.ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP * @intFromBool(view.anchors.top) |
+            c.ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT * @intFromBool(view.anchors.left) |
+            c.ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM * @intFromBool(view.anchors.bottom) |
+            c.ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT * @intFromBool(view.anchors.right));
 
         //Pass it as configs
         c.zwlr_layer_surface_v1_set_anchor(
@@ -67,24 +68,24 @@ pub const FLWindow = struct {
         //Pass it as configs
         _ = c.zwlr_layer_surface_v1_set_size(
             self.wl_layer_surface,
-            state.width,
-            state.height,
+            view.width,
+            view.height,
         );
 
         _ = c.zwlr_layer_surface_v1_set_keyboard_interactivity(
             self.wl_layer_surface,
-            state.keyboard_interactivity,
+            view.keyboard_interactivity,
         );
 
         _ = c.zwlr_layer_surface_v1_set_exclusive_zone(
             self.wl_layer_surface,
-            @intCast(state.exclusive_zone),
+            @intCast(view.exclusive_zone),
         );
 
         self.window = c.wl_egl_window_create(
             self.wl_surface,
-            @intCast(state.width),
-            @intCast(state.height),
+            @intCast(view.width),
+            @intCast(view.height),
         ) orelse {
             std.debug.print("Error creating dummy window", .{});
             return error.GetEglPlatformWindowFailed;
@@ -92,8 +93,8 @@ pub const FLWindow = struct {
 
         self.dummy_window = c.wl_egl_window_create(
             self.dummy_surface,
-            @intCast(state.width),
-            @intCast(state.height),
+            @intCast(view.width),
+            @intCast(view.height),
         ) orelse {
             std.debug.print("Error creating dummy window", .{});
             return error.GetEglPlatformWindowFailed;
@@ -131,8 +132,13 @@ pub const FLWindow = struct {
     pub fn destroy(_: *FLWindow) !void {}
 };
 
-fn configure(_: ?*anyopaque, surface: ?*c.struct_zwlr_layer_surface_v1, serial: u32, _: u32, _: u32) callconv(.C) void {
-    std.debug.print("ack is being called \n", .{});
+fn configure(
+    _: ?*anyopaque,
+    surface: ?*c.struct_zwlr_layer_surface_v1,
+    serial: u32,
+    _: u32,
+    _: u32,
+) callconv(.C) void {
     c.zwlr_layer_surface_v1_ack_configure(surface, serial);
 }
 

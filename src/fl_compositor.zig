@@ -1,6 +1,7 @@
 const c = @import("c_imports.zig").c;
 const std = @import("std");
 const WLEgl = @import("wl_egl.zig").WLEgl;
+const FLWindow = @import("fl_window.zig").FLWindow;
 
 pub const stubData = struct {
     fbo: *c_uint = undefined,
@@ -86,7 +87,7 @@ pub fn create_backing_store_callback(
     // glDrawBuffers.?(1, &drawBuffers);
 
     if (glCheckFramebufferStatus.?(c.GL_FRAMEBUFFER) != c.GL_FRAMEBUFFER_COMPLETE) {
-        std.debug.print("------------Framebuffer is incomplete------------\n", .{});
+        std.debug.print("Framebuffer is incomplete\n", .{});
         return false;
     }
 
@@ -98,11 +99,9 @@ pub fn create_backing_store_callback(
         .destruction_callback = destroy_callback,
     };
 
-    std.debug.print("------------Creating store------------\n", .{});
-
     store.*.struct_size = @sizeOf(c.FlutterBackingStore);
-    store.*.type = c.kFlutterBackingStoreTypeOpenGL;
     store.*.did_update = false;
+    store.*.type = c.kFlutterBackingStoreTypeOpenGL;
     store.*.unnamed_0.open_gl = c.FlutterOpenGLBackingStore{};
     store.*.unnamed_0.open_gl.type = c.kFlutterOpenGLTargetTypeFramebuffer;
     store.*.unnamed_0.open_gl.unnamed_0.framebuffer = fb;
@@ -115,7 +114,9 @@ pub fn destroy_callback(_: ?*anyopaque) callconv(.C) void {}
 
 pub fn present_view_callback(info: [*c]const c.FlutterPresentViewInfo) callconv(.C) bool {
     const egl: *WLEgl = @ptrCast(@alignCast(info.*.user_data));
-    const window = egl.windows[@intCast(info.*.view_id)];
+    const window: FLWindow = egl.windows.get(info.*.view_id) orelse {
+        return false;
+    };
 
     _ = c.eglMakeCurrent(
         egl.display,
@@ -131,7 +132,7 @@ pub fn present_view_callback(info: [*c]const c.FlutterPresentViewInfo) callconv(
     const glBlitFramebuffer: c.PFNGLBLITFRAMEBUFFERPROC = @ptrCast(
         c.eglGetProcAddress("glBlitFramebuffer"),
     );
-    std.debug.print("Layer {?}\n", .{info.*});
+
     for (0..info.*.layers_count) |i| {
         const layer = info.*.layers[i];
         std.debug.print("Running Layers {?}\n", .{layer.*});

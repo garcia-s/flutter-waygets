@@ -1,7 +1,6 @@
 const std = @import("std");
 const c = @import("c_imports.zig").c;
-
-const InputState = @import("input_state.zig").InputState;
+const KeyboardManager = @import("keyboard_manager.zig").KeyboardManager;
 
 pub const wl_keyboard_listener = c.wl_keyboard_listener{
     .keymap = keyboard_keymap_handler,
@@ -24,7 +23,7 @@ fn keyboard_keymap_handler(
     //Not yet ready for other formats
     if (format != 1) return;
 
-    const state: *InputState = @ptrCast(@alignCast(data));
+    const state: *KeyboardManager = @ptrCast(@alignCast(data));
 
     if (state.xkb.fd == fd and state.xkb.size == size) {
         return;
@@ -66,7 +65,7 @@ fn keyboard_enter_handler(
     surface: ?*c.wl_surface,
     _: ?*c.wl_array,
 ) callconv(.C) void {
-    const state: *InputState = @ptrCast(@alignCast(data));
+    const state: *KeyboardManager = @ptrCast(@alignCast(data));
     state.keyboard_focused = surface.?;
 }
 
@@ -89,7 +88,7 @@ fn keyboard_key_handler(
     //key_state
     _: u32,
 ) callconv(.C) void {
-    const state: *InputState = @ptrCast(@alignCast(data));
+    const state: *KeyboardManager = @ptrCast(@alignCast(data));
 
     if (state.xkb.keymap == null or state.xkb.keymap == null or state.xkb.context == null) {
         return;

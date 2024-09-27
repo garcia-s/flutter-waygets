@@ -40,7 +40,6 @@ pub const FLTaskRunner = struct {
 
     pub fn run_next_task(self: *FLTaskRunner) void {
         var task = self.queue.getLastOrNull() orelse return;
-        std.debug.print("TASK RUNNING: {?}", .{&task.task});
         if (c.FlutterEngineGetCurrentTime() < task.time) return;
 
         task = self.queue.pop();
@@ -56,8 +55,6 @@ pub const FLTaskRunner = struct {
 };
 
 pub fn post_task_callback(task: c.FlutterTask, time: u64, data: ?*anyopaque) callconv(.C) void {
-    std.debug.print("Task {?}\n", .{&task});
-    std.debug.print("Task Time {d}\n", .{time});
     const runner: *FLTaskRunner = @ptrCast(@alignCast(data));
     runner.post_task(Task{ .time = time, .task = task }) catch |err| {
         std.debug.print("Error posting task: {}\n", .{err});

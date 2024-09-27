@@ -1,5 +1,5 @@
 pub const FLView = struct {
-    auto_initialize: bool,
+    name: []u8,
     width: u32,
     height: u32,
     exclusive_zone: i32,
