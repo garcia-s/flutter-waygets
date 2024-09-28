@@ -21,8 +21,19 @@ pub fn create_flutter_compositor(wl_egl: *WLEgl) c.FlutterCompositor {
 pub fn create_backing_store_callback(
     conf: [*c]const c.FlutterBackingStoreConfig,
     store: [*c]c.FlutterBackingStore,
-    _: ?*anyopaque,
+    data: ?*anyopaque,
 ) callconv(.C) bool {
+    const egl: *WLEgl = @ptrCast(@alignCast(data));
+    const window: FLWindow = egl.windows.get(conf.*.view_id) orelse {
+        return false;
+    };
+
+    _ = c.eglMakeCurrent(
+        egl.display,
+        window.surface,
+        window.surface,
+        egl.context,
+    );
     const glGenFramebuffers: c.PFNGLGENFRAMEBUFFERSPROC = @ptrCast(
         c.eglGetProcAddress("glGenFramebuffers"),
     );
@@ -114,16 +125,10 @@ pub fn destroy_callback(_: ?*anyopaque) callconv(.C) void {}
 
 pub fn present_view_callback(info: [*c]const c.FlutterPresentViewInfo) callconv(.C) bool {
     const egl: *WLEgl = @ptrCast(@alignCast(info.*.user_data));
+
     const window: FLWindow = egl.windows.get(info.*.view_id) orelse {
         return false;
     };
-
-    _ = c.eglMakeCurrent(
-        egl.display,
-        window.surface,
-        window.surface,
-        egl.context,
-    );
 
     const glBindFramebuffer: c.PFNGLBINDFRAMEBUFFERPROC = @ptrCast(
         c.eglGetProcAddress("glBindFramebuffer"),
@@ -135,14 +140,13 @@ pub fn present_view_callback(info: [*c]const c.FlutterPresentViewInfo) callconv(
 
     for (0..info.*.layers_count) |i| {
         const layer = info.*.layers[i];
-        std.debug.print("Running Layers {?}\n", .{layer.*});
         const backs: [*c]const c.FlutterBackingStore = layer.*.unnamed_0.backing_store.?;
         const fb = backs.*.unnamed_0.open_gl.unnamed_0.framebuffer;
 
         if (backs == null) {
             continue;
         }
-
+        std.debug.print("FB NAME: {d}", .{fb.name});
         glBindFramebuffer.?(c.GL_READ_FRAMEBUFFER, fb.name);
         glBindFramebuffer.?(c.GL_DRAW_FRAMEBUFFER, 0);
 
@@ -152,6 +156,7 @@ pub fn present_view_callback(info: [*c]const c.FlutterPresentViewInfo) callconv(
             @intFromFloat(layer.*.size.width),
             @intFromFloat(layer.*.size.height),
         );
+
         glBlitFramebuffer.?(
             0,
             0,
@@ -162,10 +167,12 @@ pub fn present_view_callback(info: [*c]const c.FlutterPresentViewInfo) callconv(
             @intFromFloat(layer.*.size.width),
             @intFromFloat(layer.*.size.height),
             c.GL_COLOR_BUFFER_BIT, // Copy the color buffer
-            c.GL_LINEAR, // Nearest filtering
+            c.GL_NEAREST, // Nearest filtering
         );
 
         glBindFramebuffer.?(c.GL_FRAMEBUFFER, 0);
+
+        std.debug.print("GL ERROR {x}\n", .{c.glGetError()});
     }
 
     _ = c.eglSwapBuffers(

@@ -36,7 +36,7 @@ pub const FLWindow = struct {
             self.wl_surface,
             null,
             view.layer,
-            view.name,
+            @ptrCast(&view.name),
         ) orelse {
             std.debug.print("Failed to initialize a layer surface\n", .{});
             return error.LayerSurfaceFailed;

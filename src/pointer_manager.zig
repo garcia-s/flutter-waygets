@@ -11,7 +11,7 @@ pub const PointerManager = struct {
     alloc: std.mem.Allocator = std.heap.page_allocator,
     mouse_focused: ?*c.struct_wl_surface = null,
 
-    map: std.AutoHashMap(*c.struct_wl_surface, *c.FlutterEngine) = undefined,
+    map: std.AutoHashMap(*c.struct_wl_surface, PointerViewInfo) = undefined,
 
     event: c.FlutterPointerEvent = c.FlutterPointerEvent{
         .struct_size = @sizeOf(c.FlutterPointerEvent),
@@ -28,8 +28,10 @@ pub const PointerManager = struct {
 
     pub fn init(self: *PointerManager, alloc: std.mem.Allocator, engine: *c.FlutterEngine) !void {
         self.engine = engine;
-        self.map = std.AutoHashMap(*c.struct_wl_surface, *c.FlutterEngine)
-            .init(alloc);
+        self.map = std.AutoHashMap(
+            *c.struct_wl_surface,
+            PointerViewInfo,
+        ).init(alloc);
     }
 
     pub fn deinit(self: *PointerManager) void {

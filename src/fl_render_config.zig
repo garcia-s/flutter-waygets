@@ -6,12 +6,12 @@ pub fn create_renderer_config() c.FlutterOpenGLRendererConfig {
     return c.FlutterOpenGLRendererConfig{
         .struct_size = @sizeOf(c.FlutterOpenGLRendererConfig),
         .present = present,
+        .fbo_reset_after_present = true,
         .make_current = make_current,
         .make_resource_current = make_resource_current,
         .clear_current = clear_current,
         .fbo_callback = fbo_callback,
         .gl_proc_resolver = gl_proc_resolver,
-        .fbo_reset_after_present = true,
     };
 }
 
@@ -49,19 +49,7 @@ pub fn clear_current(data: ?*anyopaque) callconv(.C) bool {
     return true;
 }
 
-pub fn present(data: ?*anyopaque) callconv(.C) bool {
-    const embedder: *FLEmbedder = @ptrCast(@alignCast(data));
-
-    const result = c.eglSwapBuffers(
-        embedder.egl.display,
-        c.EGL_NO_SURFACE,
-    );
-
-    if (result != c.EGL_TRUE) {
-        std.debug.print("Error in EGL: {x}", .{c.eglGetError()});
-        return false;
-    }
-
+pub fn present(_: ?*anyopaque) callconv(.C) bool {
     return true;
 }
 

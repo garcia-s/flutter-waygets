@@ -40,35 +40,4 @@ pub const FLEngine = struct {
 
         //
     }
-
-    pub fn run(_: *FLEngine) !void {
-        // const result = c.FlutterEngineRunInitialized(self.engine);
-        //
-        // if (result != c.kSuccess) {
-        //     std.debug.print("Failed to run the flutter engine \n", .{});
-        //     return error.FlutterEngineRunFailed;
-        // }
-
-        // const event = c.FlutterWindowMetricsEvent{
-        //     .struct_size = @sizeOf(c.FlutterWindowMetricsEvent),
-        //     .width = self.window.state.width,
-        //     .height = self.window.state.height,
-        //     .pixel_ratio = 1,
-        //     .left = 0,
-        //     .top = 0,
-        //     .physical_view_inset_top = 0,
-        //     .physical_view_inset_right = 0,
-        //     .physical_view_inset_bottom = 0,
-        //     .physical_view_inset_left = 0,
-        //     .display_id = 0,
-        //     .view_id = 0,
-        // };
-        //
-        // _ = c.FlutterEngineSendWindowMetricsEvent(self.engine, &event);
-
-        // while (true) {
-        //     self.platform_runner.run_next_task();
-        //     self.renderer_runner.run_next_task();
-        // }
-    }
 };

@@ -50,11 +50,7 @@ pub fn pointer_motion_handler(
     event.timestamp = @intCast(std.time.milliTimestamp());
     event.phase = if (event.buttons == 0) c.kHover else c.kMove;
 
-    const engine: *c.FlutterEngine = state.map.get(state.mouse_focused.?) orelse {
-        return;
-    };
-    if (engine.* == null) return;
-    const r = c.FlutterEngineSendPointerEvent(engine.*, event, 1);
+    const r = c.FlutterEngineSendPointerEvent(state.engine.*, event, 1);
     if (r != c.kSuccess) {
         std.debug.print("Not sendin event x:{d}, y:{d}\n", .{ x, y });
     }
@@ -81,11 +77,7 @@ pub fn pointer_button_handler(
 
     event.phase = if (bt_state == 0) c.kUp else c.kDown;
 
-    const engine = state.map.get(state.mouse_focused.?) orelse {
-        return;
-    };
-
-    const r = c.FlutterEngineSendPointerEvent(engine.*, event, 1);
+    const r = c.FlutterEngineSendPointerEvent(state.engine.*, event, 1);
     if (r != c.kSuccess) {
         std.debug.print("Not sending event", .{});
     }

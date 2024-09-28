@@ -26,8 +26,8 @@ pub const WLEgl = struct {
     config: c.EGLConfig = null,
     context: c.EGLContext = undefined,
     resource_context: c.EGLContext = undefined,
+    windows: std.AutoHashMap(i64, FLWindow) = undefined,
     window_count: i64 = 0,
-    windows: std.AutoHashMap(i64, FLWindow),
     //should have the contexts
 
     pub fn init(self: *WLEgl, wl_display: *c.wl_display) !void {
