@@ -21,7 +21,7 @@ pub fn create_flutter_compositor(wl_egl: *WLEgl) c.FlutterCompositor {
 pub fn create_backing_store_callback(
     conf: [*c]const c.FlutterBackingStoreConfig,
     store: [*c]c.FlutterBackingStore,
-    _: ?*anyopaque,
+    data: ?*anyopaque,
 ) callconv(.C) bool {
     const glGenFramebuffers: c.PFNGLGENFRAMEBUFFERSPROC = @ptrCast(
         c.eglGetProcAddress("glGenFramebuffers"),
@@ -40,6 +40,20 @@ pub fn create_backing_store_callback(
 
     // const glDrawBuffers: c.PFNGLDRAWBUFFERSPROC =
     //     @ptrCast(c.eglGetProcAddress("glDrawBuffers"));
+    //
+    //
+    const egl: *WLEgl = @ptrCast(@alignCast(data));
+
+    const window: FLWindow = egl.windows.get(conf.*.view_id) orelse {
+        return false;
+    };
+
+    _ = c.eglMakeCurrent(
+        egl.display,
+        window.surface,
+        window.surface,
+        egl.context,
+    );
 
     var name: c_uint = undefined;
     glGenFramebuffers.?(1, &name);
@@ -107,6 +121,13 @@ pub fn create_backing_store_callback(
     store.*.unnamed_0.open_gl.unnamed_0.framebuffer = fb;
 
     glBindFramebuffer.?(c.GL_FRAMEBUFFER, 0);
+    _ = c.eglMakeCurrent(
+        egl.display,
+        c.EGL_NO_SURFACE,
+        c.EGL_NO_SURFACE,
+        c.EGL_NO_CONTEXT,
+    );
+
     return true;
 }
 
@@ -142,7 +163,7 @@ pub fn present_view_callback(info: [*c]const c.FlutterPresentViewInfo) callconv(
         if (backs == null) {
             continue;
         }
-        std.debug.print("FB NAME: {d}", .{fb.name});
+        std.debug.print("EGL: {?}\n", .{egl});
         glBindFramebuffer.?(c.GL_READ_FRAMEBUFFER, fb.name);
         glBindFramebuffer.?(c.GL_DRAW_FRAMEBUFFER, 0);
 
@@ -169,11 +190,16 @@ pub fn present_view_callback(info: [*c]const c.FlutterPresentViewInfo) callconv(
         glBindFramebuffer.?(c.GL_FRAMEBUFFER, 0);
 
         std.debug.print("GL ERROR {x}\n", .{c.glGetError()});
+        _ = c.eglSwapBuffers(
+            egl.display,
+            window.surface,
+        );
     }
-
-    _ = c.eglSwapBuffers(
+    _ = c.eglMakeCurrent(
         egl.display,
-        window.surface,
+        c.EGL_NO_SURFACE,
+        c.EGL_NO_SURFACE,
+        c.EGL_NO_CONTEXT,
     );
 
     return true;
