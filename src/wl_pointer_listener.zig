@@ -1,7 +1,7 @@
-const c = @import("../c_imports.zig").c;
+const c = @import("c_imports.zig").c;
 const std = @import("std");
-const FLWindow = @import("../flutter/fl_window.zig").FLWindow;
-const InputState = @import("input_state.zig").InputState;
+const FLWindow = @import("fl_window.zig").FLWindow;
+const PointerManager = @import("pointer_manager.zig").PointerManager;
 
 pub const wl_pointer_listener = c.wl_pointer_listener{
     .leave = pointer_leave_handler,
@@ -20,7 +20,7 @@ pub fn pointer_enter_handler(
     _: i32,
     _: i32,
 ) callconv(.C) void {
-    const state: *InputState = @ptrCast(@alignCast(data));
+    const state: *PointerManager = @ptrCast(@alignCast(data));
     state.mouse_focused = surface.?;
 }
 fn frame_handler(_: ?*anyopaque, _: ?*c.struct_wl_pointer) callconv(.C) void {}
@@ -39,10 +39,10 @@ pub fn pointer_motion_handler(
     x: i32,
     y: i32,
 ) callconv(.C) void {
-    const state: *InputState = @ptrCast(@alignCast(data));
+    const state: *PointerManager = @ptrCast(@alignCast(data));
     if (state.mouse_focused == null) return;
 
-    var event = &state.pointer_ev;
+    var event = &state.event;
 
     event.x = c.wl_fixed_to_double(x);
     event.y = c.wl_fixed_to_double(y);
@@ -50,11 +50,7 @@ pub fn pointer_motion_handler(
     event.timestamp = @intCast(std.time.milliTimestamp());
     event.phase = if (event.buttons == 0) c.kHover else c.kMove;
 
-    const engine = state.map.get(state.mouse_focused.?) orelse {
-        return;
-    };
-
-    const r = c.FlutterEngineSendPointerEvent(engine.?, event, 1);
+    const r = c.FlutterEngineSendPointerEvent(state.engine.*, event, 1);
     if (r != c.kSuccess) {
         std.debug.print("Not sendin event x:{d}, y:{d}\n", .{ x, y });
     }
@@ -72,20 +68,16 @@ pub fn pointer_button_handler(
     //State of the button
     bt_state: u32,
 ) callconv(.C) void {
-    const state: *InputState = @ptrCast(@alignCast(data));
+    const state: *PointerManager = @ptrCast(@alignCast(data));
     if (state.mouse_focused == null) return;
 
-    var event = &state.pointer_ev;
+    var event = &state.event;
     const btn_val: i64 = @as(i64, 1) << @intCast(btn - 272);
     event.buttons = event.buttons ^ btn_val;
 
     event.phase = if (bt_state == 0) c.kUp else c.kDown;
 
-    const engine = state.map.get(state.mouse_focused.?) orelse {
-        return;
-    };
-
-    const r = c.FlutterEngineSendPointerEvent(engine.?, event, 1);
+    const r = c.FlutterEngineSendPointerEvent(state.engine.*, event, 1);
     if (r != c.kSuccess) {
         std.debug.print("Not sending event", .{});
     }

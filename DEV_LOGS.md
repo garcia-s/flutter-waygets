@@ -49,7 +49,17 @@ This is not provided but somebody is doing the hard work for us, and these found
 
 Flutter has removed the ``` flutter build aot``` flag so, the only other option is to compile using the *assemble* flag. This has no documentation and we have to read the dart code from source but once wefind that out it's pretty easy to find what we are looking for. Inside the flutter SDK, there is a file called assemble.dart which contains a lot of very useful information.
 
+#32-09-2024
+
+I need to understand opengl if I'm going to do anything with it. There are ALOT of words I don't understand so I'm going to try to make sense of it before attempting to do anything else
 
 
+## What the fk is a framebuffer?
 
+For what I can understand reading [here](https://learnopengl.com/Advanced-OpenGL/Framebuffers) a framebuffer is a store for other buffers, it is a combination of all the color stencil and depth buffers.
 
+## Fragment?? 
+
+A fragment in opengl is all the data required for opengl to render a single pixel
+
+## Stencil??

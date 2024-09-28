@@ -1,18 +1,13 @@
-const c = @import("../c_imports.zig").c;
-const FLWindow = @import("fl_window.zig").FLWindow;
+const c = @import("c_imports.zig").c;
+const FLEmbedder = @import("embedder.zig").FLEmbedder;
 const std = @import("std");
-
-//See, none of this uses ANYTHING other than the window info, none of it uses any wayland
-//so the information I should pass to it is JUST the opengl_manager, not the whole engine
-//Granted, it's still just a pointer, but it's not necessary
-//
-//
 
 pub fn create_renderer_config() c.FlutterOpenGLRendererConfig {
     return c.FlutterOpenGLRendererConfig{
         .struct_size = @sizeOf(c.FlutterOpenGLRendererConfig),
-        .make_current = make_current,
         .present = present,
+        .fbo_reset_after_present = true,
+        .make_current = make_current,
         .make_resource_current = make_resource_current,
         .clear_current = clear_current,
         .fbo_callback = fbo_callback,
@@ -21,13 +16,13 @@ pub fn create_renderer_config() c.FlutterOpenGLRendererConfig {
 }
 
 pub fn make_current(data: ?*anyopaque) callconv(.C) bool {
-    const window: *FLWindow = @ptrCast(@alignCast(data));
+    const embedder: *FLEmbedder = @ptrCast(@alignCast(data));
 
     const result = c.eglMakeCurrent(
-        window.display,
-        window.surface,
-        window.surface,
-        window.context,
+        embedder.egl.display,
+        c.EGL_NO_SURFACE,
+        c.EGL_NO_SURFACE,
+        embedder.egl.context,
     );
 
     if (result != c.EGL_TRUE) {
@@ -38,10 +33,10 @@ pub fn make_current(data: ?*anyopaque) callconv(.C) bool {
 }
 
 pub fn clear_current(data: ?*anyopaque) callconv(.C) bool {
-    const window: *FLWindow = @ptrCast(@alignCast(data));
+    const embedder: *FLEmbedder = @ptrCast(@alignCast(data));
 
     const result = c.eglMakeCurrent(
-        window.display,
+        embedder.egl.display,
         c.EGL_NO_SURFACE,
         c.EGL_NO_SURFACE,
         c.EGL_NO_CONTEXT,
@@ -54,19 +49,7 @@ pub fn clear_current(data: ?*anyopaque) callconv(.C) bool {
     return true;
 }
 
-pub fn present(data: ?*anyopaque) callconv(.C) bool {
-    const window: *FLWindow = @ptrCast(@alignCast(data));
-
-    const result = c.eglSwapBuffers(
-        window.display,
-        window.surface,
-    );
-
-    if (result != c.EGL_TRUE) {
-        std.debug.print("Error in EGL: {x}", .{c.eglGetError()});
-        return false;
-    }
-
+pub fn present(_: ?*anyopaque) callconv(.C) bool {
     return true;
 }
 
@@ -75,13 +58,13 @@ pub fn fbo_callback(_: ?*anyopaque) callconv(.C) u32 {
 }
 // resource context setup.
 pub fn make_resource_current(data: ?*anyopaque) callconv(.C) bool {
-    const window: *FLWindow = @ptrCast(@alignCast(data));
+    const embedder: *FLEmbedder = @ptrCast(@alignCast(data));
 
     const result = c.eglMakeCurrent(
-        window.display,
-        window.resource_surface,
-        window.resource_surface,
-        window.resource_context,
+        embedder.egl.display,
+        c.EGL_NO_SURFACE,
+        c.EGL_NO_SURFACE,
+        embedder.egl.resource_context,
     );
 
     if (result == c.EGL_FALSE) {
@@ -96,6 +79,7 @@ pub fn gl_proc_resolver(_: ?*anyopaque, proc_name: [*c]const u8) callconv(.C) ?*
     const result: ?*anyopaque = @ptrCast(@constCast(
         c.eglGetProcAddress(proc_name),
     ));
+
     if (result != null) return result;
     std.debug.print("Error resolving process name {x}", .{c.eglGetError()});
     return null;
