@@ -21,19 +21,8 @@ pub fn create_flutter_compositor(wl_egl: *WLEgl) c.FlutterCompositor {
 pub fn create_backing_store_callback(
     conf: [*c]const c.FlutterBackingStoreConfig,
     store: [*c]c.FlutterBackingStore,
-    data: ?*anyopaque,
+    _: ?*anyopaque,
 ) callconv(.C) bool {
-    const egl: *WLEgl = @ptrCast(@alignCast(data));
-    const window: FLWindow = egl.windows.get(conf.*.view_id) orelse {
-        return false;
-    };
-
-    _ = c.eglMakeCurrent(
-        egl.display,
-        window.surface,
-        window.surface,
-        egl.context,
-    );
     const glGenFramebuffers: c.PFNGLGENFRAMEBUFFERSPROC = @ptrCast(
         c.eglGetProcAddress("glGenFramebuffers"),
     );
@@ -136,6 +125,13 @@ pub fn present_view_callback(info: [*c]const c.FlutterPresentViewInfo) callconv(
 
     const glBlitFramebuffer: c.PFNGLBLITFRAMEBUFFERPROC = @ptrCast(
         c.eglGetProcAddress("glBlitFramebuffer"),
+    );
+
+    _ = c.eglMakeCurrent(
+        egl.display,
+        window.surface,
+        window.surface,
+        egl.context,
     );
 
     for (0..info.*.layers_count) |i| {

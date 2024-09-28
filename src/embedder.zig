@@ -114,7 +114,6 @@ pub const FLEmbedder = struct {
     pub fn run(self: *FLEmbedder) !void {
         _ = c.FlutterEngineRunInitialized(self.engine);
         while (true) {
-            std.time.sleep(1e8);
             self.runner.run_next_task();
         }
     }
@@ -163,6 +162,20 @@ pub const FLEmbedder = struct {
             .view_id = self.egl.window_count,
         };
 
+        if (self.egl.window_count != 0) {
+            _ = c.FlutterEngineAddView(
+                self.engine,
+                &c.FlutterAddViewInfo{
+                    .struct_size = @sizeOf(c.FlutterAddViewInfo),
+                    .view_id = self.egl.window_count,
+                    .view_metrics = &event,
+                    .add_view_callback = add_view_callback,
+                },
+            );
+            self.egl.window_count += 1;
+            return;
+        }
+
         _ = c.FlutterEngineSendWindowMetricsEvent(self.engine, &event);
         self.egl.window_count += 1;
     }
@@ -176,3 +189,5 @@ fn channel_update_callback(
 ) callconv(.C) void {
     //
 }
+
+pub fn add_view_callback(_: [*c]const c.FlutterAddViewResult) callconv(.C) void {}

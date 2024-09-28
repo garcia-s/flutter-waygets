@@ -39,8 +39,15 @@ pub const FLTaskRunner = struct {
     }
 
     pub fn run_next_task(self: *FLTaskRunner) void {
-        var task = self.queue.getLastOrNull() orelse return;
-        if (c.FlutterEngineGetCurrentTime() < task.time) return;
+        var task = self.queue.getLastOrNull() orelse {
+            std.time.sleep(16e7);
+            return;
+        };
+
+        if (c.FlutterEngineGetCurrentTime() < task.time) {
+            std.time.sleep(16e7);
+            return;
+        }
 
         task = self.queue.pop();
         self.run_flutter_task(task.task);
