@@ -112,6 +112,7 @@ pub const FLEmbedder = struct {
     }
 
     pub fn run(self: *FLEmbedder) !void {
+        std.debug.print("Main thread: {d}\n", .{std.Thread.getCurrentId()});
         _ = c.FlutterEngineRunInitialized(self.engine);
         while (true) {
             self.runner.run_next_task();

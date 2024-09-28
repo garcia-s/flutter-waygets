@@ -6,7 +6,6 @@ pub fn create_renderer_config() c.FlutterOpenGLRendererConfig {
     return c.FlutterOpenGLRendererConfig{
         .struct_size = @sizeOf(c.FlutterOpenGLRendererConfig),
         .present = present,
-        .fbo_reset_after_present = true,
         .make_current = make_current,
         .make_resource_current = make_resource_current,
         .clear_current = clear_current,
@@ -16,7 +15,13 @@ pub fn create_renderer_config() c.FlutterOpenGLRendererConfig {
 }
 
 pub fn make_current(data: ?*anyopaque) callconv(.C) bool {
+    std.debug.print("Make thread: {d}\n", .{std.Thread.getCurrentId()});
     const embedder: *FLEmbedder = @ptrCast(@alignCast(data));
+    const window = embedder.egl.windows.get(embedder.egl.current);
+
+    if (window != null) {
+        return true;
+    }
 
     const result = c.eglMakeCurrent(
         embedder.egl.display,
@@ -33,6 +38,7 @@ pub fn make_current(data: ?*anyopaque) callconv(.C) bool {
 }
 
 pub fn clear_current(data: ?*anyopaque) callconv(.C) bool {
+    std.debug.print("Running Clear Current\n", .{});
     const embedder: *FLEmbedder = @ptrCast(@alignCast(data));
 
     const result = c.eglMakeCurrent(
@@ -50,15 +56,18 @@ pub fn clear_current(data: ?*anyopaque) callconv(.C) bool {
 }
 
 pub fn present(_: ?*anyopaque) callconv(.C) bool {
+    std.debug.print("Presenting \n", .{});
     return true;
 }
 
 pub fn fbo_callback(_: ?*anyopaque) callconv(.C) u32 {
+    std.debug.print("Running fbo\n", .{});
     return 0;
 }
 // resource context setup.
 pub fn make_resource_current(data: ?*anyopaque) callconv(.C) bool {
     const embedder: *FLEmbedder = @ptrCast(@alignCast(data));
+    std.debug.print("Make resource current \n", .{});
 
     const result = c.eglMakeCurrent(
         embedder.egl.display,
