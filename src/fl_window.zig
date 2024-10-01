@@ -12,7 +12,6 @@ pub const FLWindow = struct {
     wl_surface: *c.struct_wl_surface = undefined,
     window: *c.struct_wl_egl_window = undefined,
     surface: c.EGLSurface = undefined,
-    context: c.EGLContext = undefined,
 
     pub fn init(
         self: *FLWindow,
@@ -102,13 +101,6 @@ pub const FLWindow = struct {
             std.debug.print("Failed to create the EGL surface\n", .{});
             return error.EglSurfaceFailed;
         }
-
-        self.context = c.eglCreateContext(
-            display,
-            config,
-            null,
-            @constCast(ctx_attrib),
-        );
     }
 
     pub fn destroy(_: *FLWindow) !void {}

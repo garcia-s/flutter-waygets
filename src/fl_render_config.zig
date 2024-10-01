@@ -1,5 +1,6 @@
 const c = @import("c_imports.zig").c;
 const FLEmbedder = @import("embedder.zig").FLEmbedder;
+const FLWindow = @import("fl_window.zig").FLWindow;
 const std = @import("std");
 
 pub fn create_renderer_config() c.FlutterOpenGLRendererConfig {
@@ -11,17 +12,20 @@ pub fn create_renderer_config() c.FlutterOpenGLRendererConfig {
         .clear_current = clear_current,
         .fbo_callback = fbo_callback,
         .gl_proc_resolver = gl_proc_resolver,
+        .fbo_reset_after_present = true,
     };
 }
 
 pub fn make_current(data: ?*anyopaque) callconv(.C) bool {
-    std.debug.print("Make thread: {d}\n", .{std.Thread.getCurrentId()});
     const embedder: *FLEmbedder = @ptrCast(@alignCast(data));
+    const window: FLWindow = embedder.egl.windows.get(0) orelse {
+        return false;
+    };
 
     const result = c.eglMakeCurrent(
         embedder.egl.display,
-        c.EGL_NO_SURFACE,
-        c.EGL_NO_SURFACE,
+        window.surface,
+        window.surface,
         embedder.egl.context,
     );
 
@@ -33,7 +37,6 @@ pub fn make_current(data: ?*anyopaque) callconv(.C) bool {
 }
 
 pub fn clear_current(data: ?*anyopaque) callconv(.C) bool {
-    std.debug.print("Running Clear Current\n", .{});
     const embedder: *FLEmbedder = @ptrCast(@alignCast(data));
 
     const result = c.eglMakeCurrent(
@@ -50,8 +53,16 @@ pub fn clear_current(data: ?*anyopaque) callconv(.C) bool {
     return true;
 }
 
-pub fn present(_: ?*anyopaque) callconv(.C) bool {
-    std.debug.print("Presenting \n", .{});
+pub fn present(data: ?*anyopaque) callconv(.C) bool {
+    const embedder: *FLEmbedder = @ptrCast(@alignCast(data));
+    const window: FLWindow = embedder.egl.windows.get(0) orelse {
+        return false;
+    };
+    _ = c.eglSwapBuffers(
+        embedder.egl.display,
+        window.surface,
+    );
+
     return true;
 }
 
@@ -62,7 +73,6 @@ pub fn fbo_callback(_: ?*anyopaque) callconv(.C) u32 {
 // resource context setup.
 pub fn make_resource_current(data: ?*anyopaque) callconv(.C) bool {
     const embedder: *FLEmbedder = @ptrCast(@alignCast(data));
-    std.debug.print("Make resource current \n", .{});
 
     const result = c.eglMakeCurrent(
         embedder.egl.display,
@@ -71,6 +81,7 @@ pub fn make_resource_current(data: ?*anyopaque) callconv(.C) bool {
         embedder.egl.resource_context,
     );
 
+    std.debug.print("Error?: {x}\n", .{c.eglGetError()});
     if (result == c.EGL_FALSE) {
         std.debug.print("Error MAKING RESOURCE CURRENT: {X}\n", .{c.eglGetError()});
         return false;

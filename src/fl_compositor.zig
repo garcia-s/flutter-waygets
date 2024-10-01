@@ -13,7 +13,7 @@ pub fn create_flutter_compositor(wl_egl: *WLEgl) c.FlutterCompositor {
         .create_backing_store_callback = @ptrCast(&create_backing_store_callback),
         .present_view_callback = @ptrCast(&present_view_callback),
         .collect_backing_store_callback = @ptrCast(&collect_backing_store_callback),
-        .avoid_backing_store_cache = false,
+        .avoid_backing_store_cache = true,
         .user_data = @ptrCast(wl_egl),
     };
 }
@@ -23,8 +23,6 @@ pub fn create_backing_store_callback(
     store: [*c]c.FlutterBackingStore,
     _: ?*anyopaque,
 ) callconv(.C) bool {
-    std.debug.print("Errors: egl {x}  gl {x}\n", .{ c.eglGetError(), c.glGetError() });
-
     const glGenFramebuffers: c.PFNGLGENFRAMEBUFFERSPROC = @ptrCast(
         c.eglGetProcAddress("glGenFramebuffers"),
     );
@@ -50,6 +48,7 @@ pub fn create_backing_store_callback(
     //     return false;
     // };
     //
+    std.debug.print("Creating backing store", .{});
     var name: c_uint = undefined;
     glGenFramebuffers.?(1, &name);
 
@@ -141,6 +140,8 @@ pub fn present_view_callback(info: [*c]const c.FlutterPresentViewInfo) callconv(
         c.eglGetProcAddress("glBlitFramebuffer"),
     );
 
+    std.debug.print("Running view {d} of {?}\n", .{ info.*.view_id, egl.windows });
+
     _ = c.eglMakeCurrent(
         egl.display,
         window.surface,
@@ -151,6 +152,7 @@ pub fn present_view_callback(info: [*c]const c.FlutterPresentViewInfo) callconv(
     for (0..info.*.layers_count) |i| {
         const layer = info.*.layers[i];
         const backs: [*c]const c.FlutterBackingStore = layer.*.unnamed_0.backing_store.?;
+
         const fb = backs.*.unnamed_0.open_gl.unnamed_0.framebuffer;
 
         if (backs == null) {
@@ -178,7 +180,6 @@ pub fn present_view_callback(info: [*c]const c.FlutterPresentViewInfo) callconv(
             c.GL_NEAREST, // Nearest filtering
         );
     }
-
     _ = c.eglSwapBuffers(
         egl.display,
         window.surface,

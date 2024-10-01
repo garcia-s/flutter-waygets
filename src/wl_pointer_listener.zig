@@ -46,6 +46,7 @@ pub fn pointer_motion_handler(
 
     event.x = c.wl_fixed_to_double(x);
     event.y = c.wl_fixed_to_double(y);
+    event.view_id = 1;
 
     event.timestamp = @intCast(std.time.milliTimestamp());
     event.phase = if (event.buttons == 0) c.kHover else c.kMove;

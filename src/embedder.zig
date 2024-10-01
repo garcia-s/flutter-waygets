@@ -33,7 +33,6 @@ pub const FLEmbedder = struct {
             std.debug.print("Failed to retrieve a pointer", .{});
             return error.ErrorRetrievingPointer;
         };
-
         _ = c.wl_pointer_add_listener(
             pointer,
             &wl_pointer_listener,
@@ -46,9 +45,26 @@ pub const FLEmbedder = struct {
 
         //init window context
         self.egl.windows = std.AutoHashMap(i64, FLWindow).init(alloc);
-        const conf_path = std.fmt.allocPrint(alloc, "{s}/config.json", .{path});
-        const file = std.fs.read
-            .self.egl.windows.put(self.egl.window_count, view);
+        // Create a default window
+        //
+        const conf_path = try std.fmt.allocPrint(alloc, "{s}/config.json", .{path.ptr});
+        const f = try std.fs.cwd().openFile(conf_path, .{ .mode = .read_only });
+        const buff = try f.readToEndAlloc(alloc, 1024);
+        defer alloc.free(buff);
+
+        const view = try std.json.parseFromSlice(FLView, alloc, buff, .{});
+
+        var window = FLWindow{};
+
+        try window.init(
+            self.wl.compositor,
+            self.wl.layer_shell,
+            self.egl.display,
+            self.egl.config,
+            &view.value,
+        );
+
+        try self.egl.windows.put(self.egl.window_count, window);
         self.egl.window_count += 1;
 
         _ = try std.Thread.spawn(.{}, wl_loop, .{self.wl.display});
@@ -90,15 +106,15 @@ pub const FLEmbedder = struct {
             std.Thread.getCurrentId(),
             &self.engine,
         );
-
+        //
         var runner = task.create_fl_runner(&self.runner);
-
+        //
         var runners = c.FlutterCustomTaskRunners{
             .struct_size = @sizeOf(c.FlutterCustomTaskRunners),
             .render_task_runner = @ptrCast(&runner),
             .platform_task_runner = @ptrCast(&runner),
         };
-
+        //
         args.custom_task_runners = @ptrCast(&runners);
         args.compositor = @ptrCast(&create_flutter_compositor(&self.egl));
 
@@ -131,10 +147,13 @@ pub const FLEmbedder = struct {
             .physical_view_inset_bottom = 0,
             .physical_view_inset_left = 0,
             .display_id = 0,
-            .view_id = self.egl.window_count,
+            .view_id = 0,
         };
 
-        c.FlutterEngineSendWindowMetricsEvent(self.engine, &event);
+        if (c.FlutterEngineSendWindowMetricsEvent(self.engine, &event) != c.kSuccess) {
+            std.debug.print("Failed to send window event", .{});
+        }
+
         while (true) {
             self.runner.run_next_task();
         }
@@ -184,26 +203,22 @@ pub const FLEmbedder = struct {
             .view_id = self.egl.window_count,
         };
 
-        if (self.egl.window_count != 0) {
-            _ = c.FlutterEngineAddView(
-                self.engine,
-                &c.FlutterAddViewInfo{
-                    .struct_size = @sizeOf(c.FlutterAddViewInfo),
-                    .view_id = self.egl.window_count,
-                    .view_metrics = &event,
-                    .add_view_callback = add_view_callback,
-                },
-            );
-            self.egl.window_count += 1;
-            return;
-        }
-
+        _ = c.FlutterEngineAddView(
+            self.engine,
+            &c.FlutterAddViewInfo{
+                .struct_size = @sizeOf(c.FlutterAddViewInfo),
+                .view_id = self.egl.window_count,
+                .user_data = null,
+                .view_metrics = &event,
+                .add_view_callback = add_view_callback,
+            },
+        );
         const res = c.FlutterEngineSendWindowMetricsEvent(self.engine, &event);
+        self.egl.window_count += 1;
 
         if (res != c.kSuccess) {
             std.debug.print("Sending window metrics failed\n", .{});
         }
-        self.egl.window_count += 1;
     }
 
     pub fn remove_view(_: *FLEmbedder, _: i64) !void {}
