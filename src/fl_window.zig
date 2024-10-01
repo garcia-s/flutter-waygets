@@ -2,16 +2,17 @@ const std = @import("std");
 const c = @import("c_imports.zig").c;
 const FLView = @import("fl_view.zig").FLView;
 
+const ctx_attrib: [*c]c.EGLint = @constCast(&[_]c.EGLint{
+    c.EGL_CONTEXT_CLIENT_VERSION, 2,
+    c.EGL_NONE,
+});
+
 pub const FLWindow = struct {
     wl_layer_surface: *c.zwlr_layer_surface_v1 = undefined,
     wl_surface: *c.struct_wl_surface = undefined,
     window: *c.struct_wl_egl_window = undefined,
-
-    dummy_window: *c.struct_wl_egl_window = undefined,
-    dummy_surface: *c.struct_wl_surface = undefined,
-
     surface: c.EGLSurface = undefined,
-    resource_surface: c.EGLSurface = undefined,
+    context: c.EGLContext = undefined,
 
     pub fn init(
         self: *FLWindow,
@@ -24,11 +25,6 @@ pub const FLWindow = struct {
         self.wl_surface = c.wl_compositor_create_surface(compositor) orelse {
             std.debug.print("failed to get a wayland surface\n", .{});
             return error.SurfaceCreationFailed;
-        };
-
-        self.dummy_surface = c.wl_compositor_create_surface(compositor) orelse {
-            std.debug.print("failed to get a wayland surface\n", .{});
-            return error.surfacecreationfailed;
         };
 
         self.wl_layer_surface = c.zwlr_layer_shell_v1_get_layer_surface(
@@ -91,15 +87,6 @@ pub const FLWindow = struct {
             return error.GetEglPlatformWindowFailed;
         };
 
-        self.dummy_window = c.wl_egl_window_create(
-            self.dummy_surface,
-            @intCast(view.width),
-            @intCast(view.height),
-        ) orelse {
-            std.debug.print("Error creating dummy window", .{});
-            return error.GetEglPlatformWindowFailed;
-        };
-
         c.wl_surface_commit(self.wl_surface);
 
         const surface_attrib = [_]c.EGLint{c.EGL_NONE};
@@ -116,17 +103,12 @@ pub const FLWindow = struct {
             return error.EglSurfaceFailed;
         }
 
-        self.resource_surface = c.eglCreateWindowSurface(
+        self.context = c.eglCreateContext(
             display,
             config,
-            self.dummy_window,
-            &surface_attrib,
+            null,
+            @constCast(ctx_attrib),
         );
-
-        if (self.resource_surface == c.EGL_NO_SURFACE) {
-            std.debug.print("Failed to create the EGL resource_surface\n", .{});
-            return error.EglResourceSurfaceFailed;
-        }
     }
 
     pub fn destroy(_: *FLWindow) !void {}
@@ -140,6 +122,7 @@ fn configure(
     _: u32,
 ) callconv(.C) void {
     c.zwlr_layer_surface_v1_ack_configure(surface, serial);
+    std.debug.print("sending ack\n", .{});
 }
 
 fn closed(_: ?*anyopaque, _: ?*c.struct_zwlr_layer_surface_v1) callconv(.C) void {

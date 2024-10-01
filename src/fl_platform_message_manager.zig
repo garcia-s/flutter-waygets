@@ -62,7 +62,6 @@ pub fn platform_message_callback(
 ) callconv(.C) void {
     const embedder: *FLEmbedder = @ptrCast(@alignCast(data));
     var gp = std.heap.GeneralPurposeAllocator(.{}){};
-
     const str: [:0]const u8 = std.mem.span(message.*.channel);
 
     const channel = channel_map.get(str) orelse {

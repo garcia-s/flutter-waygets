@@ -21,19 +21,20 @@ pub fn create_flutter_compositor(wl_egl: *WLEgl) c.FlutterCompositor {
 pub fn create_backing_store_callback(
     conf: [*c]const c.FlutterBackingStoreConfig,
     store: [*c]c.FlutterBackingStore,
-    data: ?*anyopaque,
+    _: ?*anyopaque,
 ) callconv(.C) bool {
-    std.debug.print("Creating backing\n", .{});
+    std.debug.print("Errors: egl {x}  gl {x}\n", .{ c.eglGetError(), c.glGetError() });
+
     const glGenFramebuffers: c.PFNGLGENFRAMEBUFFERSPROC = @ptrCast(
         c.eglGetProcAddress("glGenFramebuffers"),
     );
 
-    const glCheckFramebufferStatus: c.PFNGLCHECKFRAMEBUFFERSTATUSPROC = @ptrCast(
-        c.eglGetProcAddress("glCheckFramebufferStatus"),
-    );
-
     const glBindFramebuffer: c.PFNGLBINDFRAMEBUFFERPROC = @ptrCast(
         c.eglGetProcAddress("glBindFramebuffer"),
+    );
+
+    const glCheckFramebufferStatus: c.PFNGLCHECKFRAMEBUFFERSTATUSPROC = @ptrCast(
+        c.eglGetProcAddress("glCheckFramebufferStatus"),
     );
 
     const glFramebufferTexture2D: c.PFNGLFRAMEBUFFERTEXTURE2DPROC =
@@ -43,25 +44,20 @@ pub fn create_backing_store_callback(
         @ptrCast(c.eglGetProcAddress("glDrawBuffers"));
 
     //
-    const egl: *WLEgl = @ptrCast(@alignCast(data));
+    // const egl: *WLEgl = @ptrCast(@alignCast(data));
 
-    const window: FLWindow = egl.windows.get(conf.*.view_id) orelse {
-        return false;
-    };
-
-    _ = c.eglMakeCurrent(
-        egl.display,
-        window.surface,
-        window.surface,
-        egl.context,
-    );
-
+    // const window: FLWindow = egl.windows.get(conf.*.view_id) orelse {
+    //     return false;
+    // };
+    //
     var name: c_uint = undefined;
     glGenFramebuffers.?(1, &name);
+
     glBindFramebuffer.?(c.GL_FRAMEBUFFER, @intCast(name));
 
     var tex: c_uint = 0;
     c.glGenTextures(1, @ptrCast(&tex));
+
     c.glBindTexture(c.GL_TEXTURE_2D, tex);
 
     c.glTexImage2D(
@@ -87,6 +83,7 @@ pub fn create_backing_store_callback(
         c.GL_TEXTURE_MAG_FILTER,
         c.GL_LINEAR,
     );
+
     //Why is this?
     c.glBindTexture(c.GL_TEXTURE_2D, 0);
 
@@ -99,6 +96,7 @@ pub fn create_backing_store_callback(
     );
 
     const drawBuffers: [1]c.GLenum = .{c.GL_COLOR_ATTACHMENT0};
+
     glDrawBuffers.?(1, &drawBuffers);
 
     if (glCheckFramebufferStatus.?(c.GL_FRAMEBUFFER) != c.GL_FRAMEBUFFER_COMPLETE) {
@@ -122,12 +120,6 @@ pub fn create_backing_store_callback(
     store.*.unnamed_0.open_gl.unnamed_0.framebuffer = fb;
 
     glBindFramebuffer.?(c.GL_FRAMEBUFFER, 0);
-    _ = c.eglMakeCurrent(
-        egl.display,
-        c.EGL_NO_SURFACE,
-        c.EGL_NO_SURFACE,
-        c.EGL_NO_CONTEXT,
-    );
 
     return true;
 }
@@ -135,9 +127,8 @@ pub fn create_backing_store_callback(
 pub fn destroy_callback(_: ?*anyopaque) callconv(.C) void {}
 
 pub fn present_view_callback(info: [*c]const c.FlutterPresentViewInfo) callconv(.C) bool {
-    std.debug.print("Views thread: {d}\n", .{std.Thread.getCurrentId()});
     const egl: *WLEgl = @ptrCast(@alignCast(info.*.user_data));
-
+    egl.current = info.*.view_id;
     const window: FLWindow = egl.windows.get(info.*.view_id) orelse {
         return false;
     };
@@ -167,16 +158,13 @@ pub fn present_view_callback(info: [*c]const c.FlutterPresentViewInfo) callconv(
         }
 
         glBindFramebuffer.?(c.GL_READ_FRAMEBUFFER, fb.name);
-        std.debug.print("EGL: {x} GL: {x}\n", .{ c.eglGetError(), c.glGetError() });
         glBindFramebuffer.?(c.GL_DRAW_FRAMEBUFFER, 0);
-        std.debug.print("EGL: {x} GL: {x}\n", .{ c.eglGetError(), c.glGetError() });
         c.glViewport(
             0,
             0,
             @intFromFloat(layer.*.size.width),
             @intFromFloat(layer.*.size.height),
         );
-        std.debug.print("EGL: {x} GL: {x}\n", .{ c.eglGetError(), c.glGetError() });
         glBlitFramebuffer.?(
             0,
             0,
@@ -189,9 +177,6 @@ pub fn present_view_callback(info: [*c]const c.FlutterPresentViewInfo) callconv(
             c.GL_COLOR_BUFFER_BIT, // Copy the color buffer
             c.GL_NEAREST, // Nearest filtering
         );
-        std.debug.print("EGL: {x} GL: {x}\n", .{ c.eglGetError(), c.glGetError() });
-
-        glBindFramebuffer.?(c.GL_FRAMEBUFFER, 0);
     }
 
     _ = c.eglSwapBuffers(

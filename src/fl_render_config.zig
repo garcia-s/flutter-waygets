@@ -17,11 +17,6 @@ pub fn create_renderer_config() c.FlutterOpenGLRendererConfig {
 pub fn make_current(data: ?*anyopaque) callconv(.C) bool {
     std.debug.print("Make thread: {d}\n", .{std.Thread.getCurrentId()});
     const embedder: *FLEmbedder = @ptrCast(@alignCast(data));
-    const window = embedder.egl.windows.get(embedder.egl.current);
-
-    if (window != null) {
-        return true;
-    }
 
     const result = c.eglMakeCurrent(
         embedder.egl.display,

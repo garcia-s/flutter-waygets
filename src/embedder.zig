@@ -46,8 +46,13 @@ pub const FLEmbedder = struct {
 
         //init window context
         self.egl.windows = std.AutoHashMap(i64, FLWindow).init(alloc);
+        const conf_path = std.fmt.allocPrint(alloc, "{s}/config.json", .{path});
+        const file = std.fs.read
+            .self.egl.windows.put(self.egl.window_count, view);
+        self.egl.window_count += 1;
 
         _ = try std.Thread.spawn(.{}, wl_loop, .{self.wl.display});
+
         const assets_path = try std.fmt.allocPrintZ(alloc, "{s}/{s}", .{
             path.*,
             "flutter_assets",
@@ -112,8 +117,24 @@ pub const FLEmbedder = struct {
     }
 
     pub fn run(self: *FLEmbedder) !void {
-        std.debug.print("Main thread: {d}\n", .{std.Thread.getCurrentId()});
         _ = c.FlutterEngineRunInitialized(self.engine);
+
+        var event = c.FlutterWindowMetricsEvent{
+            .struct_size = @sizeOf(c.FlutterWindowMetricsEvent),
+            .width = 600,
+            .height = 100,
+            .pixel_ratio = 1,
+            .left = 0,
+            .top = 0,
+            .physical_view_inset_top = 0,
+            .physical_view_inset_right = 0,
+            .physical_view_inset_bottom = 0,
+            .physical_view_inset_left = 0,
+            .display_id = 0,
+            .view_id = self.egl.window_count,
+        };
+
+        c.FlutterEngineSendWindowMetricsEvent(self.engine, &event);
         while (true) {
             self.runner.run_next_task();
         }
@@ -177,7 +198,11 @@ pub const FLEmbedder = struct {
             return;
         }
 
-        _ = c.FlutterEngineSendWindowMetricsEvent(self.engine, &event);
+        const res = c.FlutterEngineSendWindowMetricsEvent(self.engine, &event);
+
+        if (res != c.kSuccess) {
+            std.debug.print("Sending window metrics failed\n", .{});
+        }
         self.egl.window_count += 1;
     }
 
