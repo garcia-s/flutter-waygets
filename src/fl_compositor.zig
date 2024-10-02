@@ -48,7 +48,6 @@ pub fn create_backing_store_callback(
     //     return false;
     // };
     //
-    std.debug.print("Creating backing store", .{});
     var name: c_uint = undefined;
     glGenFramebuffers.?(1, &name);
 
@@ -139,8 +138,6 @@ pub fn present_view_callback(info: [*c]const c.FlutterPresentViewInfo) callconv(
     const glBlitFramebuffer: c.PFNGLBLITFRAMEBUFFERPROC = @ptrCast(
         c.eglGetProcAddress("glBlitFramebuffer"),
     );
-
-    std.debug.print("Running view {d} of {?}\n", .{ info.*.view_id, egl.windows });
 
     _ = c.eglMakeCurrent(
         egl.display,

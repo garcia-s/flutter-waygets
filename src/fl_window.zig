@@ -114,7 +114,6 @@ fn configure(
     _: u32,
 ) callconv(.C) void {
     c.zwlr_layer_surface_v1_ack_configure(surface, serial);
-    std.debug.print("sending ack\n", .{});
 }
 
 fn closed(_: ?*anyopaque, _: ?*c.struct_zwlr_layer_surface_v1) callconv(.C) void {

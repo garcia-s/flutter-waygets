@@ -21,8 +21,9 @@ pub fn pointer_enter_handler(
     _: i32,
 ) callconv(.C) void {
     const state: *PointerManager = @ptrCast(@alignCast(data));
-    state.mouse_focused = surface.?;
+    state.event.view_id = state.map.get(surface.?) orelse -1;
 }
+
 fn frame_handler(_: ?*anyopaque, _: ?*c.struct_wl_pointer) callconv(.C) void {}
 
 pub fn pointer_leave_handler(
@@ -40,18 +41,19 @@ pub fn pointer_motion_handler(
     y: i32,
 ) callconv(.C) void {
     const state: *PointerManager = @ptrCast(@alignCast(data));
-    if (state.mouse_focused == null) return;
 
     var event = &state.event;
-
     event.x = c.wl_fixed_to_double(x);
     event.y = c.wl_fixed_to_double(y);
-    event.view_id = 1;
 
-    event.timestamp = @intCast(std.time.milliTimestamp());
+    event.timestamp = c.FlutterEngineGetCurrentTime();
     event.phase = if (event.buttons == 0) c.kHover else c.kMove;
 
-    const r = c.FlutterEngineSendPointerEvent(state.engine.*, event, 1);
+    const r = c.FlutterEngineSendPointerEvent(
+        state.engine.*,
+        event,
+        1,
+    );
     if (r != c.kSuccess) {
         std.debug.print("Not sendin event x:{d}, y:{d}\n", .{ x, y });
     }
@@ -70,7 +72,6 @@ pub fn pointer_button_handler(
     bt_state: u32,
 ) callconv(.C) void {
     const state: *PointerManager = @ptrCast(@alignCast(data));
-    if (state.mouse_focused == null) return;
 
     var event = &state.event;
     const btn_val: i64 = @as(i64, 1) << @intCast(btn - 272);

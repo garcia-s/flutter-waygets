@@ -20,7 +20,7 @@ pub const FLEmbedder = struct {
     gpa: std.heap.GeneralPurposeAllocator(.{}) = std.heap.GeneralPurposeAllocator(.{}){},
     engine: c.FlutterEngine = undefined,
 
-    input: PointerManager = PointerManager{},
+    pointer: PointerManager = PointerManager{},
     runner: task.FLTaskRunner = task.FLTaskRunner{},
 
     pub fn init(self: *FLEmbedder, path: *[:0]u8) !void {
@@ -36,12 +36,12 @@ pub const FLEmbedder = struct {
         _ = c.wl_pointer_add_listener(
             pointer,
             &wl_pointer_listener,
-            &self.input,
+            &self.pointer,
         );
 
         //Init egl stuff
         try self.egl.init(self.wl.display);
-        try self.input.init(alloc, &self.engine);
+        try self.pointer.init(alloc, &self.engine);
 
         //init window context
         self.egl.windows = std.AutoHashMap(i64, FLWindow).init(alloc);
@@ -65,6 +65,8 @@ pub const FLEmbedder = struct {
         );
 
         try self.egl.windows.put(self.egl.window_count, window);
+        try self.pointer.map.put(window.wl_surface, self.egl.window_count);
+
         self.egl.window_count += 1;
 
         _ = try std.Thread.spawn(.{}, wl_loop, .{self.wl.display});
@@ -181,12 +183,7 @@ pub const FLEmbedder = struct {
             window,
         );
 
-        try self.input.map.put(
-            window.wl_surface,
-            PointerViewInfo{
-                .view_id = self.egl.window_count,
-            },
-        );
+        try self.pointer.map.put(window.wl_surface, self.egl.window_count);
 
         var event = c.FlutterWindowMetricsEvent{
             .struct_size = @sizeOf(c.FlutterWindowMetricsEvent),

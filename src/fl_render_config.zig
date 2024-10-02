@@ -67,7 +67,6 @@ pub fn present(data: ?*anyopaque) callconv(.C) bool {
 }
 
 pub fn fbo_callback(_: ?*anyopaque) callconv(.C) u32 {
-    std.debug.print("Running fbo\n", .{});
     return 0;
 }
 // resource context setup.
