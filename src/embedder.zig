@@ -5,6 +5,7 @@ const FLView = @import("fl_view.zig").FLView;
 const FLWindow = @import("fl_window.zig").FLWindow;
 const WLManager = @import("wl_manager.zig").WLManager;
 const PointerManager = @import("pointer_manager.zig").PointerManager;
+const KeyboardManager = @import("keyboard_manager.zig").KeyboardManager;
 const PointerViewInfo = @import("pointer_manager.zig").PointerViewInfo;
 
 const get_aot_data = @import("fl_aot.zig").get_aot_data;
@@ -21,11 +22,10 @@ pub const FLEmbedder = struct {
     engine: c.FlutterEngine = undefined,
 
     pointer: PointerManager = PointerManager{},
+    keyboard: KeyboardManager = KeyboardManager{},
     runner: task.FLTaskRunner = task.FLTaskRunner{},
 
     pub fn init(self: *FLEmbedder, path: *[:0]u8) !void {
-        //
-        //Init wayland stuff
         const alloc = self.gpa.allocator();
         try self.wl.init();
 
@@ -33,8 +33,20 @@ pub const FLEmbedder = struct {
             std.debug.print("Failed to retrieve a pointer", .{});
             return error.ErrorRetrievingPointer;
         };
+
         _ = c.wl_pointer_add_listener(
             pointer,
+            &wl_pointer_listener,
+            &self.pointer,
+        );
+
+        const keyboard = c.wl_seat_get_keyboard(self.wl.seat) orelse {
+            std.debug.print("Failed to retrieve a pointer", .{});
+            return error.ErrorRetrievingPointer;
+        };
+
+        _ = c.wl_keyboard_keymap_format(
+            keyboard,
             &wl_pointer_listener,
             &self.pointer,
         );
