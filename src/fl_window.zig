@@ -40,6 +40,7 @@ pub const FLWindow = struct {
             return error.LayerSurfaceFailed;
         };
         //
+
         const layer_listener = c.struct_zwlr_layer_surface_v1_listener{
             .configure = configure,
             .closed = closed,
@@ -103,7 +104,12 @@ pub const FLWindow = struct {
         }
     }
 
-    pub fn destroy(_: *FLWindow) !void {}
+    pub fn destroy(self: *FLWindow, display: c.EGLDisplay) !void {
+        _ = c.zwlr_layer_surface_v1_destroy(self.wl_layer_surface);
+        c.wl_surface_destroy(self.wl_layer_surface);
+        _ = c.eglDestroySurface(display, self.surface);
+        c.wl_egl_window_destroy(self.window);
+    }
 };
 
 fn configure(
