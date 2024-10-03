@@ -7,8 +7,10 @@ const ctx_attrib: [*c]c.EGLint = @constCast(&[_]c.EGLint{
     c.EGL_NONE,
 });
 
+const surface_attrib = [_]c.EGLint{c.EGL_NONE};
+
 pub const FLWindow = struct {
-    wl_layer_surface: *c.zwlr_layer_surface_v1 = undefined,
+    name: *[]u8 = undefined,
     wl_surface: *c.struct_wl_surface = undefined,
     window: *c.struct_wl_egl_window = undefined,
     surface: c.EGLSurface = undefined,
@@ -87,9 +89,6 @@ pub const FLWindow = struct {
         };
 
         c.wl_surface_commit(self.wl_surface);
-
-        const surface_attrib = [_]c.EGLint{c.EGL_NONE};
-
         self.surface = c.eglCreateWindowSurface(
             display,
             config,
