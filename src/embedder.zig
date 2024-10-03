@@ -45,30 +45,6 @@ pub const FLEmbedder = struct {
 
         //init window context
         self.egl.windows = std.AutoHashMap(i64, FLWindow).init(alloc);
-        // Create a default window
-        //
-        const conf_path = try std.fmt.allocPrint(alloc, "{s}/config.json", .{path.ptr});
-        const f = try std.fs.cwd().openFile(conf_path, .{ .mode = .read_only });
-        const buff = try f.readToEndAlloc(alloc, 1024);
-        defer alloc.free(buff);
-
-        const view = try std.json.parseFromSlice(FLView, alloc, buff, .{});
-
-        var window = FLWindow{};
-
-        try window.init(
-            self.wl.compositor,
-            self.wl.layer_shell,
-            self.egl.display,
-            self.egl.config,
-            &view.value,
-        );
-
-        try self.egl.windows.put(self.egl.window_count, window);
-        try self.pointer.map.put(window.wl_surface, self.egl.window_count);
-
-        self.egl.window_count += 1;
-
         _ = try std.Thread.spawn(.{}, wl_loop, .{self.wl.display});
 
         const assets_path = try std.fmt.allocPrintZ(alloc, "{s}/{s}", .{
@@ -200,16 +176,17 @@ pub const FLEmbedder = struct {
             .view_id = self.egl.window_count,
         };
 
-        _ = c.FlutterEngineAddView(
-            self.engine,
-            &c.FlutterAddViewInfo{
-                .struct_size = @sizeOf(c.FlutterAddViewInfo),
-                .view_id = self.egl.window_count,
-                .user_data = null,
-                .view_metrics = &event,
-                .add_view_callback = add_view_callback,
-            },
-        );
+        if (self.egl.window_count != 0)
+            _ = c.FlutterEngineAddView(
+                self.engine,
+                &c.FlutterAddViewInfo{
+                    .struct_size = @sizeOf(c.FlutterAddViewInfo),
+                    .view_id = self.egl.window_count,
+                    .user_data = null,
+                    .view_metrics = &event,
+                    .add_view_callback = add_view_callback,
+                },
+            );
         const res = c.FlutterEngineSendWindowMetricsEvent(self.engine, &event);
         self.egl.window_count += 1;
 

@@ -18,14 +18,17 @@ pub fn create_renderer_config() c.FlutterOpenGLRendererConfig {
 
 pub fn make_current(data: ?*anyopaque) callconv(.C) bool {
     const embedder: *FLEmbedder = @ptrCast(@alignCast(data));
-    const window: FLWindow = embedder.egl.windows.get(0) orelse {
-        return false;
-    };
+    const window: ?FLWindow = embedder.egl.windows.get(0);
+    var surface: c.EGLSurface = c.EGL_NO_SURFACE;
+
+    if (window != null) {
+        surface = window.?.surface;
+    }
 
     const result = c.eglMakeCurrent(
         embedder.egl.display,
-        window.surface,
-        window.surface,
+        surface,
+        surface,
         embedder.egl.context,
     );
 

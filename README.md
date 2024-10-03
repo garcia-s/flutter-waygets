@@ -6,7 +6,6 @@ This is a "zig" flutter embedder to create flutter widgets for wlr-layer-shell. 
 ## BEHOLD The underwhelming power of poorly made screencaptures
 
 ![flutter_gui](./assets/out.gif)
-
 ![flutter_gui2](./assets/out2.gif)
 
 
