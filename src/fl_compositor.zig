@@ -126,7 +126,7 @@ pub fn destroy_callback(_: ?*anyopaque) callconv(.C) void {}
 
 pub fn present_view_callback(info: [*c]const c.FlutterPresentViewInfo) callconv(.C) bool {
     const egl: *WLEgl = @ptrCast(@alignCast(info.*.user_data));
-    egl.current = info.*.view_id;
+
     const window: FLWindow = egl.windows.get(info.*.view_id) orelse {
         return false;
     };

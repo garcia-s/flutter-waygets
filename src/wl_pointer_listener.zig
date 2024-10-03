@@ -27,11 +27,30 @@ pub fn pointer_enter_handler(
 fn frame_handler(_: ?*anyopaque, _: ?*c.struct_wl_pointer) callconv(.C) void {}
 
 pub fn pointer_leave_handler(
-    _: ?*anyopaque,
+    data: ?*anyopaque,
     _: ?*c.struct_wl_pointer,
     _: u32,
     _: ?*c.struct_wl_surface,
-) callconv(.C) void {}
+) callconv(.C) void {
+    const state: *PointerManager = @ptrCast(@alignCast(data));
+
+    var event = &state.event;
+    event.x = c.wl_fixed_to_double(0);
+    event.y = c.wl_fixed_to_double(0);
+
+    event.timestamp = c.FlutterEngineGetCurrentTime();
+    event.phase = if (event.buttons == 0) c.kHover else c.kMove;
+
+    const r = c.FlutterEngineSendPointerEvent(
+        state.engine.*,
+        event,
+        1,
+    );
+
+    if (r != c.kSuccess) {
+        std.debug.print("Couldn't send pointer event", .{});
+    }
+}
 
 pub fn pointer_motion_handler(
     data: ?*anyopaque,

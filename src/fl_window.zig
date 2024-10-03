@@ -13,6 +13,7 @@ pub const FLWindow = struct {
     name: *[]u8 = undefined,
     wl_surface: *c.struct_wl_surface = undefined,
     window: *c.struct_wl_egl_window = undefined,
+    wl_layer_surface: *c.zwlr_layer_surface_v1 = undefined,
     surface: c.EGLSurface = undefined,
 
     pub fn init(

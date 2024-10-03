@@ -25,20 +25,50 @@ fn add_view_handler(
     var gp = std.heap.GeneralPurposeAllocator(.{}){};
     const alloc = gp.allocator();
 
-    const p = std.json.parseFromSlice(
-        struct {
-            method: []u8,
-            args: [1]FLView,
-        },
-        alloc,
-        str,
-        .{ .ignore_unknown_fields = true },
-    ) catch |err| {
+    const p = std.json.parseFromSlice(struct {
+        method: []u8,
+        args: [1]FLView,
+    }, alloc, str, .{ .ignore_unknown_fields = true }) catch |err| {
         std.debug.print("Error: {?}", .{err});
         return;
     };
 
     try embedder.add_view(p.value.args[0]);
+    defer p.deinit();
+    const data = try std.fmt.allocPrintZ(
+        alloc,
+        "[{{\"view_id\": {d} }}]",
+        .{embedder.egl.window_count - 1},
+    );
+
+    defer alloc.free(data);
+
+    _ = c.FlutterEngineSendPlatformMessageResponse(
+        embedder.engine,
+        handle,
+        data,
+        data.len,
+    );
+}
+
+fn remove_view_handler(
+    str: [:0]const u8,
+    embedder: *FLEmbedder,
+    handle: ?*const c.FlutterPlatformMessageResponseHandle,
+) !void {
+    var gp = std.heap.GeneralPurposeAllocator(.{}){};
+    const alloc = gp.allocator();
+
+    const p = std.json.parseFromSlice(struct {
+        method: []u8,
+        args: [1]FLView,
+    }, alloc, str, .{ .ignore_unknown_fields = true }) catch |err| {
+        std.debug.print("Error: {?}", .{err});
+        return;
+    };
+
+    try embedder.egl.windows.remove();
+
     defer p.deinit();
     const data = try std.fmt.allocPrintZ(
         alloc,
