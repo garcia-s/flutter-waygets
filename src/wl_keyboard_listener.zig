@@ -84,25 +84,42 @@ fn keyboard_key_handler(
         e.keyboard.xkb.keymap == null or
         e.keyboard.xkb.context == null) return;
 
+    const code: *const [1:0]u8 = "A";
+    const timestamp: f64 = @as(f64, @floatFromInt(c.FlutterEngineGetCurrentTime())) / 1e3;
+
+    e.keyboard.event.character = code;
+    e.keyboard.event.physical = 0x04;
+    e.keyboard.event.logical = 0x61;
+    e.keyboard.event.timestamp = timestamp;
+    e.keyboard.event.type = c.kFlutterKeyEventTypeDown;
+    // timestamp: f64 = @import("std").mem.zeroes(f64),
+    // type: FlutterKeyEventType = @import("std").mem.zeroes(FlutterKeyEventType),
+    // physical: u64 = @import("std").mem.zeroes(u64),
+    // logical: u64 = @import("std").mem.zeroes(u64),
+    // character: [*c]const u8 = @import("std").mem.zeroes([*c]const u8),
+    // synthesized: bool = @import("std").mem.zeroes(bool),
+    // device_type: FlutterKeyEventDeviceType = @import("std").mem.zeroes(FlutterKeyEventDeviceType),
     const res = c.FlutterEngineSendKeyEvent(
         e.engine,
         &e.keyboard.event,
         key_callback,
-        e,
+        &e.keyboard.event,
     );
 
-    // const code: *const [1:0]u8 = "a";
-    const timestamp: f64 = @as(f64, @floatFromInt(c.FlutterEngineGetCurrentTime())) / 1e6;
-
-    // e.keyboard.event.character = code;
-    e.keyboard.event.physical = 0x00070004;
-    e.keyboard.event.logical = 0x00000000061;
-    e.keyboard.event.timestamp = timestamp;
-    e.keyboard.event.type = c.kFlutterKeyEventTypeDown;
+    std.debug.print("Keyboard {?}", .{e.keyboard.event});
 
     if (res != c.kSuccess) {
         std.debug.print("Some error while sending the key\n", .{});
     }
+
+    e.keyboard.event.type = c.kFlutterKeyEventTypeDown;
+
+    _ = c.FlutterEngineSendKeyEvent(
+        e.engine,
+        &e.keyboard.event,
+        key_callback,
+        &e.keyboard.event,
+    );
 
     //--------- Key pressed ----------
     // var event = c.FlutterPlatformMessage{ .stuct_size = @sizeOf(c.FlutterPlatformMessage),

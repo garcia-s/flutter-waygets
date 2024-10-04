@@ -94,12 +94,21 @@ pub const FLEmbedder = struct {
             "icudtl.dat",
         });
 
+        var argv = [_][*:0]const u8{
+            "--verbose-logging".ptr,
+            "--trace-key-events".ptr,
+        };
+
         var args = c.FlutterProjectArgs{
             .struct_size = @sizeOf(c.FlutterProjectArgs),
             .assets_path = @ptrCast(assets_path.ptr),
+            .log_message_callback = log_message_callback,
             .icu_data_path = @ptrCast(icu_path.ptr),
             .platform_message_callback = platform_message_callback,
             .channel_update_callback = channel_update_callback,
+            .compute_platform_resolved_locale_callback = compute_platform_resolved_locale_callback,
+            .command_line_argc = argv.len,
+            .command_line_argv = @ptrCast(&argv),
         };
 
         if (c.FlutterEngineRunsAOTCompiledDartCode()) {
@@ -218,3 +227,14 @@ fn channel_update_callback(
 }
 
 pub fn add_view_callback(_: [*c]const c.FlutterAddViewResult) callconv(.C) void {}
+
+pub fn compute_platform_resolved_locale_callback(
+    locales: [*c][*c]const c.FlutterLocale,
+    _: usize,
+) callconv(.C) [*c]const c.FlutterLocale {
+    std.debug.print("Running the locales thingy\n", .{});
+    return locales[0];
+}
+pub fn log_message_callback(tag: [*c]const u8, message: [*c]const u8, _: ?*anyopaque) callconv(.C) void {
+    std.debug.print("{s}: {s}", .{ tag, message });
+}
