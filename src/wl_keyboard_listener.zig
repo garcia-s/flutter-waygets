@@ -82,10 +82,7 @@ fn keyboard_key_handler(
 
     if (e.keyboard.xkb.keymap == null or
         e.keyboard.xkb.keymap == null or
-        e.keyboard.xkb.context == null)
-    {
-        return;
-    }
+        e.keyboard.xkb.context == null) return;
 
     const res = c.FlutterEngineSendKeyEvent(
         e.engine,
@@ -94,17 +91,26 @@ fn keyboard_key_handler(
         e,
     );
 
+    // const code: *const [1:0]u8 = "a";
+    const timestamp: f64 = @as(f64, @floatFromInt(c.FlutterEngineGetCurrentTime())) / 1e6;
+
+    // e.keyboard.event.character = code;
+    e.keyboard.event.physical = 0x00070004;
+    e.keyboard.event.logical = 0x00000000061;
+    e.keyboard.event.timestamp = timestamp;
+    e.keyboard.event.type = c.kFlutterKeyEventTypeDown;
+
     if (res != c.kSuccess) {
         std.debug.print("Some error while sending the key\n", .{});
     }
+
     //--------- Key pressed ----------
-    // var event = c.FlutterPlatformMessage{
-    //     .struct_size = @sizeOf(c.FlutterPlatformMessage),
+    // var event = c.FlutterPlatformMessage{ .stuct_size = @sizeOf(c.FlutterPlatformMessage),
     //     .channel = "flutter/keyevent",
     //     // channel: [*c]const u8 = @import("std").mem.zeroes([*c]const u8),
     //     // message: [*c]const u8 = @import("std").mem.zeroes([*c]const u8),
     //     // message_size: usize = @import("std").mem.zeroes(usize),
-    //     // response_handle: ?*const FlutterPlatformMessageResponseHandle = @import("std").mem.zeroes(?*const FlutterPlatformMessageResponseHandle),
+    //     // response_handle: ,*const FlutterPlatformMessageResponseHandle = @import("std").mem.zeroes(?*const FlutterPlatformMessageResponseHandle),
     //     // .struct_size = @sizeOf(c.FlutterKeyEvent),
     //     // .type = if (k_state == 1) c.kFlutterKeyEventTypeDown else c.kFlutterKeyEventTypeUp,
     //     // .device_type = c.kFlutterKeyEventDeviceTypeKeyboard,
