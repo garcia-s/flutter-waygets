@@ -38,7 +38,7 @@ fn add_view_handler(
     const data = try std.fmt.allocPrintZ(
         alloc,
         "[{{\"view_id\": {d} }}]",
-        .{embedder.egl.window_count - 1},
+        .{embedder.window_count - 1},
     );
 
     defer alloc.free(data);
@@ -73,7 +73,7 @@ fn remove_view_handler(
     const data = try std.fmt.allocPrintZ(
         alloc,
         "[{{\"view_id\": {d} }}]",
-        .{embedder.egl.window_count - 1},
+        .{embedder.window_count - 1},
     );
 
     defer alloc.free(data);

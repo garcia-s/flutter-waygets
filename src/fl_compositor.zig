@@ -1,13 +1,13 @@
 const c = @import("c_imports.zig").c;
 const std = @import("std");
-const WLEgl = @import("wl_egl.zig").WLEgl;
+const FLEmbedder = @import("embedder.zig").FLEmbedder;
 const FLWindow = @import("fl_window.zig").FLWindow;
 
 pub const stubData = struct {
     fbo: *c_uint = undefined,
 };
 
-pub fn create_flutter_compositor(wl_egl: *WLEgl) c.FlutterCompositor {
+pub fn create_flutter_compositor(wl_egl: *FLEmbedder) c.FlutterCompositor {
     return c.FlutterCompositor{
         .struct_size = @sizeOf(c.FlutterCompositor),
         .create_backing_store_callback = @ptrCast(&create_backing_store_callback),
@@ -41,13 +41,6 @@ pub fn create_backing_store_callback(
     const glDrawBuffers: c.PFNGLDRAWBUFFERSPROC =
         @ptrCast(c.eglGetProcAddress("glDrawBuffers"));
 
-    //
-    // const egl: *WLEgl = @ptrCast(@alignCast(data));
-
-    // const window: FLWindow = egl.windows.get(conf.*.view_id) orelse {
-    //     return false;
-    // };
-    //
     var name: c_uint = undefined;
     glGenFramebuffers.?(1, &name);
 
@@ -125,9 +118,9 @@ pub fn create_backing_store_callback(
 pub fn destroy_callback(_: ?*anyopaque) callconv(.C) void {}
 
 pub fn present_view_callback(info: [*c]const c.FlutterPresentViewInfo) callconv(.C) bool {
-    const egl: *WLEgl = @ptrCast(@alignCast(info.*.user_data));
+    const emb: *FLEmbedder = @ptrCast(@alignCast(info.*.user_data));
 
-    const window: FLWindow = egl.windows.get(info.*.view_id) orelse {
+    const window: FLWindow = emb.windows.get(info.*.view_id) orelse {
         return false;
     };
 
@@ -140,10 +133,10 @@ pub fn present_view_callback(info: [*c]const c.FlutterPresentViewInfo) callconv(
     );
 
     _ = c.eglMakeCurrent(
-        egl.display,
+        emb.egl.display,
         window.surface,
         window.surface,
-        egl.context,
+        emb.egl.context,
     );
 
     for (0..info.*.layers_count) |i| {
@@ -178,7 +171,7 @@ pub fn present_view_callback(info: [*c]const c.FlutterPresentViewInfo) callconv(
         );
     }
     _ = c.eglSwapBuffers(
-        egl.display,
+        emb.egl.display,
         window.surface,
     );
 

@@ -1,6 +1,7 @@
 const std = @import("std");
 const c = @import("c_imports.zig").c;
 const FLView = @import("fl_view.zig").FLView;
+const WLEgl = @import("wl_egl.zig").WLEgl;
 
 const ctx_attrib: [*c]c.EGLint = @constCast(&[_]c.EGLint{
     c.EGL_CONTEXT_CLIENT_VERSION, 2,
@@ -18,19 +19,16 @@ pub const FLWindow = struct {
 
     pub fn init(
         self: *FLWindow,
-        compositor: *c.struct_wl_compositor,
-        layer_shell: *c.struct_zwlr_layer_shell_v1,
-        display: c.EGLDisplay,
-        config: c.EGLConfig,
+        wl_egl: *WLEgl,
         view: *const FLView,
     ) !void {
-        self.wl_surface = c.wl_compositor_create_surface(compositor) orelse {
+        self.wl_surface = c.wl_compositor_create_surface(wl_egl.compositor) orelse {
             std.debug.print("failed to get a wayland surface\n", .{});
             return error.SurfaceCreationFailed;
         };
 
         self.wl_layer_surface = c.zwlr_layer_shell_v1_get_layer_surface(
-            layer_shell,
+            wl_egl.layer_shell,
             self.wl_surface,
             null,
             view.layer,
@@ -92,8 +90,8 @@ pub const FLWindow = struct {
 
         c.wl_surface_commit(self.wl_surface);
         self.surface = c.eglCreateWindowSurface(
-            display,
-            config,
+            wl_egl.display,
+            wl_egl.config,
             self.window,
             &surface_attrib,
         );

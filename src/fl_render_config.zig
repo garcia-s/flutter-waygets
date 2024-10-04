@@ -18,7 +18,7 @@ pub fn create_renderer_config() c.FlutterOpenGLRendererConfig {
 
 pub fn make_current(data: ?*anyopaque) callconv(.C) bool {
     const embedder: *FLEmbedder = @ptrCast(@alignCast(data));
-    const window: ?FLWindow = embedder.egl.windows.get(0);
+    const window: ?FLWindow = embedder.windows.get(0);
     var surface: c.EGLSurface = c.EGL_NO_SURFACE;
 
     if (window != null) {
@@ -58,7 +58,7 @@ pub fn clear_current(data: ?*anyopaque) callconv(.C) bool {
 
 pub fn present(data: ?*anyopaque) callconv(.C) bool {
     const embedder: *FLEmbedder = @ptrCast(@alignCast(data));
-    const window: FLWindow = embedder.egl.windows.get(0) orelse {
+    const window: FLWindow = embedder.windows.get(0) orelse {
         return false;
     };
     _ = c.eglSwapBuffers(
