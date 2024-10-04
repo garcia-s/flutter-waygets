@@ -20,7 +20,7 @@ pub const FLTaskRunner = struct {
     thread: usize = undefined,
     alloc: std.mem.Allocator = undefined,
     engine: *c.FlutterEngine = undefined,
-    queue: std.ArrayList(Task) = undefined,
+    queue: std.PriorityQueue(Task, void, cmp) = undefined,
 
     pub fn init(
         self: *FLTaskRunner,
@@ -29,27 +29,28 @@ pub const FLTaskRunner = struct {
         engine: *c.FlutterEngine,
     ) !void {
         self.alloc = std.heap.page_allocator;
-        self.queue = std.ArrayList(Task).init(self.alloc);
+        self.queue = std.PriorityQueue(Task, void, cmp).init(self.alloc, undefined);
         self.thread = thread;
         self.engine = engine;
     }
 
     pub fn post_task(self: *FLTaskRunner, task: Task) !void {
-        try self.queue.append(task);
+        try self.queue.add(task);
     }
 
     pub fn run_next_task(self: *FLTaskRunner) void {
-        var task = self.queue.getLastOrNull() orelse {
-            std.time.sleep(16e7);
+        const frame_delay = std.time.ns_per_s / 60;
+        var task = self.queue.peek() orelse {
+            std.time.sleep(frame_delay);
             return;
         };
 
-        if (c.FlutterEngineGetCurrentTime() < task.time) {
-            std.time.sleep(16e7);
-            return;
+        const delta: u64 = task.time -| c.FlutterEngineGetCurrentTime();
+        if (delta > 0) {
+            std.time.sleep(delta);
         }
 
-        task = self.queue.pop();
+        task = self.queue.remove();
         self.run_flutter_task(task.task);
     }
 
@@ -58,6 +59,10 @@ pub const FLTaskRunner = struct {
         if (result != c.kSuccess) {
             std.debug.print("Error running the task {?}\n ", .{task});
         }
+    }
+
+    fn cmp(_: void, a: Task, b: Task) std.math.Order {
+        return std.math.order(a.time, b.time);
     }
 };
 

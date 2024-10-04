@@ -3,33 +3,62 @@ const c = @import("c_imports.zig").c;
 const WLEgl = @import("wl_egl.zig").WLEgl;
 const FLView = @import("fl_view.zig").FLView;
 const FLWindow = @import("fl_window.zig").FLWindow;
-const WLManager = @import("wl_manager.zig").WLManager;
 const PointerManager = @import("pointer_manager.zig").PointerManager;
+const KeyboardManager = @import("keyboard_manager.zig").KeyboardManager;
 const PointerViewInfo = @import("pointer_manager.zig").PointerViewInfo;
 
 const get_aot_data = @import("fl_aot.zig").get_aot_data;
 const create_renderer_config = @import("fl_render_config.zig").create_renderer_config;
 const create_flutter_compositor = @import("fl_compositor.zig").create_flutter_compositor;
 const platform_message_callback = @import("fl_platform_message_manager.zig").platform_message_callback;
+const wl_keyboard_listener = @import("wl_keyboard_listener.zig").wl_keyboard_listener;
 const wl_pointer_listener = @import("wl_pointer_listener.zig").wl_pointer_listener;
 const task = @import("fl_task_runners.zig");
 
+///Main embedder interface
 pub const FLEmbedder = struct {
-    wl: WLManager = WLManager{},
+    gpa: std.heap.GeneralPurposeAllocator(.{}) =
+        std.heap.GeneralPurposeAllocator(.{}){},
+
+    ///A struct to manage everything related to egl-wayland
     egl: WLEgl = WLEgl{},
-    gpa: std.heap.GeneralPurposeAllocator(.{}) = std.heap.GeneralPurposeAllocator(.{}){},
+
+    ///Flutter engine instance
     engine: c.FlutterEngine = undefined,
 
-    input: PointerManager = PointerManager{},
+    ///Manager for the pointer events
+    pointer: PointerManager = PointerManager{},
+
+    ///Manager for keyboard events
+    keyboard: KeyboardManager = KeyboardManager{},
+
+    ///View id to wayland surface pointer map,
+    ///Flutter's custom task runner instance
     runner: task.FLTaskRunner = task.FLTaskRunner{},
 
-    pub fn init(self: *FLEmbedder, path: *[:0]u8) !void {
-        //
-        //Init wayland stuff
-        const alloc = self.gpa.allocator();
-        try self.wl.init();
+    ///Map used to find the correct view_id from a surface pointer
+    ///Used while mapping the pointer coordinates to the correct surface
+    view_surface_map: std.AutoHashMap(*c.struct_wl_surface, i64) = undefined,
 
-        const pointer = c.wl_seat_get_pointer(self.wl.seat) orelse {
+    ///Map used to control the FLWindow instances
+    ///To resize, move, close and create windows
+    windows: std.AutoHashMap(i64, FLWindow) = undefined,
+
+    ///The ammount of current windows alive in the current flutter
+    window_count: i64 = 0,
+
+    pub fn init(self: *FLEmbedder, path: *[:0]u8) !void {
+        const alloc = self.gpa.allocator();
+        //Init all the wayland and EGL stuff
+        try self.egl.init();
+        //Create a dispatch loop
+        _ = try std.Thread.spawn(.{}, wl_loop, .{self.egl.wl_display});
+
+        //Mouse doesn't need to be initialized but keyboard
+        //does need to create a xkb context, whatever that means
+        try self.keyboard.init();
+
+        const pointer = c.wl_seat_get_pointer(self.egl.seat) orelse {
             std.debug.print("Failed to retrieve a pointer", .{});
             return error.ErrorRetrievingPointer;
         };
@@ -37,17 +66,24 @@ pub const FLEmbedder = struct {
         _ = c.wl_pointer_add_listener(
             pointer,
             &wl_pointer_listener,
-            &self.input,
+            self,
         );
 
-        //Init egl stuff
-        try self.egl.init(self.wl.display);
-        try self.input.init(alloc, &self.engine);
+        const keyboard = c.wl_seat_get_keyboard(self.egl.seat) orelse {
+            std.debug.print("Failed to retrieve a pointer", .{});
+            return error.ErrorRetrievingPointer;
+        };
+
+        _ = c.wl_keyboard_add_listener(
+            keyboard,
+            &wl_keyboard_listener,
+            self,
+        );
 
         //init window context
-        self.egl.windows = std.AutoHashMap(i64, FLWindow).init(alloc);
+        self.windows = std.AutoHashMap(i64, FLWindow).init(alloc);
+        self.view_surface_map = std.AutoHashMap(*c.struct_wl_surface, i64).init(alloc);
 
-        _ = try std.Thread.spawn(.{}, wl_loop, .{self.wl.display});
         const assets_path = try std.fmt.allocPrintZ(alloc, "{s}/{s}", .{
             path.*,
             "flutter_assets",
@@ -85,17 +121,17 @@ pub const FLEmbedder = struct {
             std.Thread.getCurrentId(),
             &self.engine,
         );
-
+        //
         var runner = task.create_fl_runner(&self.runner);
-
+        //
         var runners = c.FlutterCustomTaskRunners{
             .struct_size = @sizeOf(c.FlutterCustomTaskRunners),
             .render_task_runner = @ptrCast(&runner),
             .platform_task_runner = @ptrCast(&runner),
         };
-
+        //
         args.custom_task_runners = @ptrCast(&runners);
-        args.compositor = @ptrCast(&create_flutter_compositor(&self.egl));
+        args.compositor = @ptrCast(&create_flutter_compositor(self));
 
         const res = c.FlutterEngineInitialize(
             1,
@@ -125,26 +161,16 @@ pub const FLEmbedder = struct {
     }
 
     pub fn add_view(self: *FLEmbedder, view: FLView) !void {
+        //TODO: Might need to move this to a windows manager struct
         var window = FLWindow{};
 
-        try window.init(
-            self.wl.compositor,
-            self.wl.layer_shell,
-            self.egl.display,
-            self.egl.config,
-            &view,
-        );
+        try window.init(&self.egl, &view);
 
-        try self.egl.windows.put(
-            self.egl.window_count,
-            window,
-        );
+        try self.windows.put(self.window_count, window);
 
-        try self.input.map.put(
+        try self.view_surface_map.put(
             window.wl_surface,
-            PointerViewInfo{
-                .view_id = self.egl.window_count,
-            },
+            self.window_count,
         );
 
         var event = c.FlutterWindowMetricsEvent{
@@ -159,25 +185,26 @@ pub const FLEmbedder = struct {
             .physical_view_inset_bottom = 0,
             .physical_view_inset_left = 0,
             .display_id = 0,
-            .view_id = self.egl.window_count,
+            .view_id = self.window_count,
         };
 
-        if (self.egl.window_count != 0) {
+        if (self.window_count != 0)
             _ = c.FlutterEngineAddView(
                 self.engine,
                 &c.FlutterAddViewInfo{
                     .struct_size = @sizeOf(c.FlutterAddViewInfo),
-                    .view_id = self.egl.window_count,
+                    .view_id = self.window_count,
+                    .user_data = null,
                     .view_metrics = &event,
                     .add_view_callback = add_view_callback,
                 },
             );
-            self.egl.window_count += 1;
-            return;
-        }
+        const res = c.FlutterEngineSendWindowMetricsEvent(self.engine, &event);
+        self.window_count += 1;
 
-        _ = c.FlutterEngineSendWindowMetricsEvent(self.engine, &event);
-        self.egl.window_count += 1;
+        if (res != c.kSuccess) {
+            std.debug.print("Sending window metrics failed\n", .{});
+        }
     }
 
     pub fn remove_view(_: *FLEmbedder, _: i64) !void {}

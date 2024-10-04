@@ -1,38 +1,34 @@
 const std = @import("std");
 const c = @import("c_imports.zig").c;
 const FLView = @import("fl_view.zig").FLView;
+const WLEgl = @import("wl_egl.zig").WLEgl;
+
+const ctx_attrib: [*c]c.EGLint = @constCast(&[_]c.EGLint{
+    c.EGL_CONTEXT_CLIENT_VERSION, 2,
+    c.EGL_NONE,
+});
+
+const surface_attrib = [_]c.EGLint{c.EGL_NONE};
 
 pub const FLWindow = struct {
-    wl_layer_surface: *c.zwlr_layer_surface_v1 = undefined,
+    name: *[]u8 = undefined,
     wl_surface: *c.struct_wl_surface = undefined,
     window: *c.struct_wl_egl_window = undefined,
-
-    dummy_window: *c.struct_wl_egl_window = undefined,
-    dummy_surface: *c.struct_wl_surface = undefined,
-
+    wl_layer_surface: *c.zwlr_layer_surface_v1 = undefined,
     surface: c.EGLSurface = undefined,
-    resource_surface: c.EGLSurface = undefined,
 
     pub fn init(
         self: *FLWindow,
-        compositor: *c.struct_wl_compositor,
-        layer_shell: *c.struct_zwlr_layer_shell_v1,
-        display: c.EGLDisplay,
-        config: c.EGLConfig,
+        wl_egl: *WLEgl,
         view: *const FLView,
     ) !void {
-        self.wl_surface = c.wl_compositor_create_surface(compositor) orelse {
+        self.wl_surface = c.wl_compositor_create_surface(wl_egl.compositor) orelse {
             std.debug.print("failed to get a wayland surface\n", .{});
             return error.SurfaceCreationFailed;
         };
 
-        self.dummy_surface = c.wl_compositor_create_surface(compositor) orelse {
-            std.debug.print("failed to get a wayland surface\n", .{});
-            return error.surfacecreationfailed;
-        };
-
         self.wl_layer_surface = c.zwlr_layer_shell_v1_get_layer_surface(
-            layer_shell,
+            wl_egl.layer_shell,
             self.wl_surface,
             null,
             view.layer,
@@ -42,6 +38,7 @@ pub const FLWindow = struct {
             return error.LayerSurfaceFailed;
         };
         //
+
         const layer_listener = c.struct_zwlr_layer_surface_v1_listener{
             .configure = configure,
             .closed = closed,
@@ -91,22 +88,10 @@ pub const FLWindow = struct {
             return error.GetEglPlatformWindowFailed;
         };
 
-        self.dummy_window = c.wl_egl_window_create(
-            self.dummy_surface,
-            @intCast(view.width),
-            @intCast(view.height),
-        ) orelse {
-            std.debug.print("Error creating dummy window", .{});
-            return error.GetEglPlatformWindowFailed;
-        };
-
         c.wl_surface_commit(self.wl_surface);
-
-        const surface_attrib = [_]c.EGLint{c.EGL_NONE};
-
         self.surface = c.eglCreateWindowSurface(
-            display,
-            config,
+            wl_egl.display,
+            wl_egl.config,
             self.window,
             &surface_attrib,
         );
@@ -115,21 +100,14 @@ pub const FLWindow = struct {
             std.debug.print("Failed to create the EGL surface\n", .{});
             return error.EglSurfaceFailed;
         }
-
-        self.resource_surface = c.eglCreateWindowSurface(
-            display,
-            config,
-            self.dummy_window,
-            &surface_attrib,
-        );
-
-        if (self.resource_surface == c.EGL_NO_SURFACE) {
-            std.debug.print("Failed to create the EGL resource_surface\n", .{});
-            return error.EglResourceSurfaceFailed;
-        }
     }
 
-    pub fn destroy(_: *FLWindow) !void {}
+    pub fn destroy(self: *FLWindow, display: c.EGLDisplay) !void {
+        _ = c.zwlr_layer_surface_v1_destroy(self.wl_layer_surface);
+        c.wl_surface_destroy(self.wl_layer_surface);
+        _ = c.eglDestroySurface(display, self.surface);
+        c.wl_egl_window_destroy(self.window);
+    }
 };
 
 fn configure(

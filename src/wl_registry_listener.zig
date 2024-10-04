@@ -1,7 +1,7 @@
 const c = @import("c_imports.zig").c;
 const std = @import("std");
 
-const WLManager = @import("wl_manager.zig").WLManager;
+const WLEgl = @import("wl_egl.zig").WLEgl;
 
 pub const wl_registry_listener = c.wl_registry_listener{
     .global = global_registry_handler,
@@ -15,7 +15,7 @@ fn global_registry_handler(
     iface: [*c]const u8,
     version: u32,
 ) callconv(.C) void {
-    const manager: *WLManager = @ptrCast(@alignCast(data));
+    const manager: *WLEgl = @ptrCast(@alignCast(data));
 
     if (std.mem.eql(u8, std.mem.span(iface), "wl_compositor")) {
         manager.compositor = @ptrCast(

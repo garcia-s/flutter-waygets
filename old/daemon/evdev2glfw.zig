@@ -1,2 +1,0 @@
-const Hashmap
-var table = 
