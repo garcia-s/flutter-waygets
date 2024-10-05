@@ -1,9 +1,8 @@
 const c = @import("c_imports.zig").c;
 const std = @import("std");
-const wl_keyboard_listener = @import("wl_keyboard_listener.zig").wl_keyboard_listener;
-const wl_registry_listener = @import("wl_registry_listener.zig").wl_registry_listener;
 const FLView = @import("fl_view.zig").FLView;
 const FLWindow = @import("fl_window.zig").FLWindow;
+const wl_registry_listener = @import("./listeners/registry.zig").wl_registry_listener;
 
 const config_attrib = [_]c.EGLint{
     c.EGL_RENDERABLE_TYPE, c.EGL_OPENGL_ES2_BIT,

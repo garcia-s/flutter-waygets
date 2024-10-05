@@ -1,6 +1,6 @@
 const std = @import("std");
-const c = @import("c_imports.zig").c;
-const FLEmbedder = @import("embedder.zig").FLEmbedder;
+const c = @import("../c_imports.zig").c;
+const FLEmbedder = @import("../embedder.zig").FLEmbedder;
 
 pub const wl_keyboard_listener = c.wl_keyboard_listener{
     .keymap = keyboard_keymap_handler,
@@ -84,29 +84,19 @@ fn keyboard_key_handler(
         e.keyboard.xkb.keymap == null or
         e.keyboard.xkb.context == null) return;
 
-    const code: *const [1:0]u8 = "A";
-    const timestamp: f64 = @as(f64, @floatFromInt(c.FlutterEngineGetCurrentTime())) / 1e3;
-
-    e.keyboard.event.character = code;
-    e.keyboard.event.physical = 0x04;
-    e.keyboard.event.logical = 0x61;
-    e.keyboard.event.timestamp = timestamp;
+    e.keyboard.event.character = "a";
+    e.keyboard.event.physical = 0x00070004;
+    e.keyboard.event.logical = 0x00000000061;
+    e.keyboard.event.timestamp = @as(f64, @floatFromInt(c.FlutterEngineGetCurrentTime(e.engine))) / 1e3;
     e.keyboard.event.type = c.kFlutterKeyEventTypeDown;
-    // timestamp: f64 = @import("std").mem.zeroes(f64),
-    // type: FlutterKeyEventType = @import("std").mem.zeroes(FlutterKeyEventType),
-    // physical: u64 = @import("std").mem.zeroes(u64),
-    // logical: u64 = @import("std").mem.zeroes(u64),
-    // character: [*c]const u8 = @import("std").mem.zeroes([*c]const u8),
-    // synthesized: bool = @import("std").mem.zeroes(bool),
-    // device_type: FlutterKeyEventDeviceType = @import("std").mem.zeroes(FlutterKeyEventDeviceType),
-    const res = c.FlutterEngineSendKeyEvent(
-        e.engine,
-        &e.keyboard.event,
-        key_callback,
-        &e.keyboard.event,
-    );
+    e.keyboard.event.synthesized = true;
 
-    std.debug.print("Keyboard {?}", .{e.keyboard.event});
+    var res = c.FlutterEngineSendKeyEvent(
+        e.engine,
+        @ptrCast(&e.keyboard.event),
+        key_callback,
+        null,
+    );
 
     if (res != c.kSuccess) {
         std.debug.print("Some error while sending the key\n", .{});
@@ -122,27 +112,90 @@ fn keyboard_key_handler(
     );
 
     //--------- Key pressed ----------
-    // var event = c.FlutterPlatformMessage{ .stuct_size = @sizeOf(c.FlutterPlatformMessage),
-    //     .channel = "flutter/keyevent",
-    //     // channel: [*c]const u8 = @import("std").mem.zeroes([*c]const u8),
-    //     // message: [*c]const u8 = @import("std").mem.zeroes([*c]const u8),
-    //     // message_size: usize = @import("std").mem.zeroes(usize),
-    //     // response_handle: ,*const FlutterPlatformMessageResponseHandle = @import("std").mem.zeroes(?*const FlutterPlatformMessageResponseHandle),
-    //     // .struct_size = @sizeOf(c.FlutterKeyEvent),
-    //     // .type = if (k_state == 1) c.kFlutterKeyEventTypeDown else c.kFlutterKeyEventTypeUp,
-    //     // .device_type = c.kFlutterKeyEventDeviceTypeKeyboard,
-    // };
+    // static constexpr char kTypeValueUp[] = "keyup";
+    // static constexpr char kTypeValueDown[] = "keydown";
     //
-    // const res = c.FlutterEngineSendPlatformMessage(
-    //     engine,
-    //     &event,
-    //     &key_callback,
-    //     null,
-    // );
+    // static constexpr char kKeyCodeKey[] = "keyCode";
+    // static constexpr char kScanCodeKey[] = "scanCode";
+    // static constexpr char kModifiersKey[] = "modifiers";
+    // static constexpr char kSpecifiedLogicalKey[] = "specifiedLogicalKey";
+    // static constexpr char kUnicodeScalarValuesKey[] = "unicodeScalarValues";
+    var gp = std.heap.GeneralPurposeAllocator(.{}){};
+    var m = MessageEvent{
+        .type = @constCast("keydown"),
+        .keymap = @constCast("linux"),
+        .toolkit = @constCast("glfw"),
+        .modifiers = 0,
+        .scanCode = 0x04,
+        .keyCode = 0x97,
+        .specifiedLogicalKey = 0x00000000061,
+    };
+
+    const b = std.json.stringifyAlloc(gp.allocator(), m, .{}) catch {
+        std.debug.print("Cannot create buffer for message", .{});
+        return;
+    };
+    defer gp.allocator().free(b);
+
+    var event = c.FlutterPlatformMessage{
+        .struct_size = @sizeOf(c.FlutterPlatformMessage),
+        .channel = "flutter/keyevent",
+        .message_size = b.len,
+        .message = b.ptr,
+    };
+
+    _ = c.FlutterPlatformMessageCreateResponseHandle(
+        e.engine,
+        platformResponse,
+        null,
+        @ptrCast(&event.response_handle),
+    );
+    res = c.FlutterEngineSendPlatformMessage(
+        e.engine,
+        &event,
+    );
+
+    if (res != c.kSuccess) {
+        std.debug.print("Some error while sending the key\n", .{});
+    }
+
+    e.keyboard.event.type = c.kFlutterKeyEventTypeUp;
+    e.keyboard.event.timestamp = @as(f64, @floatFromInt(c.FlutterEngineGetCurrentTime(e.engine))) / 1e3;
+
+    _ = c.FlutterEngineSendKeyEvent(
+        e.engine,
+        &e.keyboard.event,
+        key_callback,
+        null,
+    );
+    m.type = @constCast("keyup");
+    const b2 = std.json.stringifyAlloc(gp.allocator(), m, .{}) catch {
+        std.debug.print("Cannot create buffer for message", .{});
+        return;
+    };
+    defer gp.allocator().free(b2);
+    event.message = b2.ptr;
+    event.message_size = b2.len;
+
+    _ = c.FlutterEngineSendPlatformMessage(
+        e.engine,
+        &event,
+    );
 }
 
-// event.AddMember(kScanCodeKey, keycode, allocator);
-// event.AddMember(kModifiersKey, modifiers, allocator);
+const MessageEvent = struct {
+    type: []u8,
+    keymap: []u8,
+    toolkit: []u8,
+    scanCode: u32,
+    modifiers: u32,
+    // code: []u8,
+    // location: u32,
+    keyCode: u32,
+
+    specifiedLogicalKey: u32,
+    // metaState: u32,
+};
 
 pub fn key_callback(result: bool, _: ?*anyopaque) callconv(.C) void {
     std.debug.print("What key result {}\n", .{result});
@@ -158,4 +211,8 @@ fn keyboard_modifiers_handler(
     _: u32,
 ) callconv(.C) void {
     std.debug.print("Keyboard modifiers changed\n", .{});
+}
+
+fn platformResponse(res: [*c]const u8, _: usize, _: ?*anyopaque) callconv(.C) void {
+    std.debug.print("Response arrived: {s}\n", .{res});
 }

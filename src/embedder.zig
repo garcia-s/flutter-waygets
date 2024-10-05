@@ -10,9 +10,9 @@ const PointerViewInfo = @import("pointer_manager.zig").PointerViewInfo;
 const get_aot_data = @import("fl_aot.zig").get_aot_data;
 const create_renderer_config = @import("fl_render_config.zig").create_renderer_config;
 const create_flutter_compositor = @import("fl_compositor.zig").create_flutter_compositor;
-const platform_message_callback = @import("fl_platform_message_manager.zig").platform_message_callback;
-const wl_keyboard_listener = @import("wl_keyboard_listener.zig").wl_keyboard_listener;
-const wl_pointer_listener = @import("wl_pointer_listener.zig").wl_pointer_listener;
+const platform_message_callback = @import("./channels/message_callback.zig").platform_message_callback;
+const wl_keyboard_listener = @import("./listeners/keyboard.zig").wl_keyboard_listener;
+const wl_pointer_listener = @import("./listeners/pointer.zig").wl_pointer_listener;
 const task = @import("fl_task_runners.zig");
 
 ///Main embedder interface
@@ -158,6 +158,16 @@ pub const FLEmbedder = struct {
 
     pub fn run(self: *FLEmbedder) !void {
         _ = c.FlutterEngineRunInitialized(self.engine);
+
+        _ = c.FlutterEngineSendKeyEvent(
+            self.engine,
+            &c.FlutterKeyEvent{
+                .struct_size = @sizeOf(c.FlutterKeyEvent),
+            },
+            null,
+            null,
+        );
+
         while (true) {
             self.runner.run_next_task();
         }
