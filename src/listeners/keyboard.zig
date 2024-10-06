@@ -99,8 +99,10 @@ fn keyboard_key_handler(
     //key_state
     state: u32,
 ) callconv(.C) void {
+    // how to handle the damn keyboard,
     const e: *FLEmbedder = @ptrCast(@alignCast(data));
 
+    std.debug.print("Key pressed\n", .{});
     if (e.keyboard.xkb.keymap == null or
         e.keyboard.xkb.state == null or
         e.keyboard.xkb.context == null) return;
@@ -124,8 +126,6 @@ fn keyboard_key_handler(
         return;
     };
 
-    std.debug.print("Buff: {s} {d}\n", .{ e.keyboard.key_buff, in });
-
     const json = std.json.stringifyAlloc(
         e.keyboard.gp.allocator(),
         e.keyboard.edit_state,
@@ -147,7 +147,6 @@ fn keyboard_key_handler(
     std.debug.print("buff", .{});
     e.keyboard.message.message = b.ptr;
     e.keyboard.message.message_size = b.len;
-
     e.keyboard.message.channel = @constCast(
         "flutter/textinput",
     );
