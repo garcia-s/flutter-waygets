@@ -3,42 +3,6 @@ const c = @import("../c_imports.zig").c;
 const MessageHandler = @import("handler.zig").MessageHandler;
 const FLEmbedder = @import("../embedder.zig").FLEmbedder;
 
-// {
-//     "viewId": 0,
-//     "inputType": {
-//         "name": "TextInputType.text",
-//         "signed": null,
-//         "decimal": null
-//     },
-//     "readOnly": false,
-//     "obscureText": false,
-//     "autocorrect": true,
-//     "smartDashesType": "1",
-//     "smartQuotesType": "1",
-//     "enableSuggestions": true,
-//     "enableInteractiveSelection": true,
-//     "actionLabel": null,
-//     "inputAction": "TextInputAction.done",
-//     "textCapitalization": "TextCapitalization.none",
-//     "keyboardAppearance": "Brightness.light",
-//     "enableIMEPersonalizedLearning": true,
-//     "contentCommitMimeTypes": [],
-//     "autofill": {
-//         "uniqueIdentifier": "EditableText-340050299",
-//         "hints": [],
-//         "editingValue": {
-//             "text": "",
-//             "selectionBase": -1,
-//             "selectionExtent": -1,
-//             "selectionAffinity": "TextAffinity.downstream",
-//             "selectionIsDirectional": false,
-//             "composingBase": -1,
-//             "composingExtent": -1
-//         }
-//     },
-//     "enableDeltaModel": false
-// }
-
 const TextInputHandler = *const fn (
     *const ?std.json.Value,
     *FLEmbedder,

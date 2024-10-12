@@ -78,15 +78,6 @@ fn keyboard_leave_handler(
     _: ?*c.wl_surface,
 ) callconv(.C) void {}
 
-const update_fmt =
-    \\{{
-    \\  "method":"TextInputClient.updateEditingState",
-    \\  "args": [
-    \\      {d}, 
-    \\          {s}
-    \\  ]
-    \\}}
-;
 fn keyboard_key_handler(
     data: ?*anyopaque,
     _: ?*c.wl_keyboard,
@@ -107,58 +98,10 @@ fn keyboard_key_handler(
         e.keyboard.xkb.state == null or
         e.keyboard.xkb.context == null) return;
 
-    if (e.keyboard.edit_state == null) return;
     if (state == 1) return;
-    //Determine if its an input thing or a rawkey thing
-    const in = c.xkb_state_key_get_utf8(
-        e.keyboard.xkb.state,
-        k + 8,
-        e.keyboard.key_buff.ptr,
-        e.keyboard.key_buff.len,
-    );
 
-    e.keyboard.edit_state.?.text = std.fmt.allocPrint(
-        e.keyboard.gp.allocator(),
-        "{s}{s}",
-        .{ e.keyboard.edit_state.?.text, e.keyboard.key_buff[0..@intCast(in)] },
-    ) catch {
-        std.debug.print("Not working correctly", .{});
-        return;
-    };
-
-    const json = std.json.stringifyAlloc(
-        e.keyboard.gp.allocator(),
-        e.keyboard.edit_state,
-        .{},
-    ) catch {
-        std.debug.print("Not working correctly", .{});
-        return;
-    };
-
-    defer e.keyboard.gp.allocator().free(json);
-    const b = std.fmt.bufPrint(e.keyboard.json_buff, update_fmt, .{
-        e.keyboard.current_id,
-        json,
-    }) catch |err| {
-        std.debug.print("Cannot print to buffer {?}\n", .{err});
-        return;
-    };
-
-    std.debug.print("buff", .{});
-    e.keyboard.message.message = b.ptr;
-    e.keyboard.message.message_size = b.len;
-    e.keyboard.message.channel = @constCast(
-        "flutter/textinput",
-    );
-
-    const r = c.FlutterEngineSendPlatformMessage(
-        e.engine,
-        &e.keyboard.message,
-    );
-
-    if (r != c.kSuccess) {
-        std.debug.print("Not working correctly\n", .{});
-    }
+    if (e.keyboard.edit_state != null)
+        return e.keyboard.handleTextInput(e.engine, k);
 }
 
 ///Keep for RawKeyboardEvent implementation
@@ -177,13 +120,26 @@ const MessageEvent = struct {
 };
 
 fn keyboard_modifiers_handler(
-    _: ?*anyopaque,
+    data: ?*anyopaque,
     _: ?*c.wl_keyboard,
-    _: u32,
-    _: u32,
-    _: u32,
-    _: u32,
-    _: u32,
+    _: u32, //Serial
+    depressed: u32,
+    latched: u32,
+    locked: u32,
+    group: u32,
 ) callconv(.C) void {
-    std.debug.print("Keyboard modifiers changed\n", .{});
+    const e: *FLEmbedder = @ptrCast(@alignCast(data));
+    if (e.keyboard.xkb.keymap == null or
+        e.keyboard.xkb.state == null or
+        e.keyboard.xkb.context == null) return;
+
+    _ = c.xkb_state_update_mask(
+        e.keyboard.xkb.state,
+        depressed,
+        latched,
+        locked,
+        0,
+        0,
+        group,
+    );
 }

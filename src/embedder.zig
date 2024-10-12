@@ -49,9 +49,11 @@ pub const FLEmbedder = struct {
 
     pub fn init(self: *FLEmbedder, path: *[:0]u8) !void {
         const alloc = self.gpa.allocator();
+
         //Init all the wayland and EGL stuff
         try self.egl.init();
-        //Create a dispatch loop
+
+        //Create a dispatch Wayland loop
         _ = try std.Thread.spawn(.{}, wl_loop, .{self.egl.wl_display});
 
         //Mouse doesn't need to be initialized but keyboard
