@@ -15,7 +15,7 @@ pub fn build(b: *std.Build) void {
     exe.addSystemIncludePath(b.path("../linux-x64-embedder"));
     exe.linkSystemLibrary("egl");
     exe.linkSystemLibrary("opengl");
-    exe.linkSystemLibrary("glfw3");
+    // exe.linkSystemLibrary("glfw3");
     exe.linkSystemLibrary("wayland-egl");
     exe.linkSystemLibrary("wayland-client");
     exe.linkSystemLibrary("xkbcommon");

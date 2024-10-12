@@ -1,7 +1,7 @@
-const c = @import("c_imports.zig").c;
+const c = @import("../c_imports.zig").c;
 const std = @import("std");
 
-const WLEgl = @import("wl_egl.zig").WLEgl;
+const WLEgl = @import("../wl_egl.zig").WLEgl;
 
 pub const wl_registry_listener = c.wl_registry_listener{
     .global = global_registry_handler,

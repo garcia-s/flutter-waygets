@@ -10,9 +10,9 @@ const PointerViewInfo = @import("pointer_manager.zig").PointerViewInfo;
 const get_aot_data = @import("fl_aot.zig").get_aot_data;
 const create_renderer_config = @import("fl_render_config.zig").create_renderer_config;
 const create_flutter_compositor = @import("fl_compositor.zig").create_flutter_compositor;
-const platform_message_callback = @import("fl_platform_message_manager.zig").platform_message_callback;
-const wl_keyboard_listener = @import("wl_keyboard_listener.zig").wl_keyboard_listener;
-const wl_pointer_listener = @import("wl_pointer_listener.zig").wl_pointer_listener;
+const platform_message_callback = @import("./channels/message_callback.zig").platform_message_callback;
+const wl_keyboard_listener = @import("./listeners/keyboard.zig").wl_keyboard_listener;
+const wl_pointer_listener = @import("./listeners/pointer.zig").wl_pointer_listener;
 const task = @import("fl_task_runners.zig");
 
 ///Main embedder interface
@@ -94,12 +94,21 @@ pub const FLEmbedder = struct {
             "icudtl.dat",
         });
 
+        var argv = [_][*:0]const u8{
+            "--verbose-logging".ptr,
+            "--trace-key-events".ptr,
+        };
+
         var args = c.FlutterProjectArgs{
             .struct_size = @sizeOf(c.FlutterProjectArgs),
             .assets_path = @ptrCast(assets_path.ptr),
+            .log_message_callback = log_message_callback,
             .icu_data_path = @ptrCast(icu_path.ptr),
             .platform_message_callback = platform_message_callback,
             .channel_update_callback = channel_update_callback,
+            .compute_platform_resolved_locale_callback = compute_platform_resolved_locale_callback,
+            .command_line_argc = argv.len,
+            .command_line_argv = @ptrCast(&argv),
         };
 
         if (c.FlutterEngineRunsAOTCompiledDartCode()) {
@@ -149,6 +158,16 @@ pub const FLEmbedder = struct {
 
     pub fn run(self: *FLEmbedder) !void {
         _ = c.FlutterEngineRunInitialized(self.engine);
+
+        _ = c.FlutterEngineSendKeyEvent(
+            self.engine,
+            &c.FlutterKeyEvent{
+                .struct_size = @sizeOf(c.FlutterKeyEvent),
+            },
+            null,
+            null,
+        );
+
         while (true) {
             self.runner.run_next_task();
         }
@@ -218,3 +237,14 @@ fn channel_update_callback(
 }
 
 pub fn add_view_callback(_: [*c]const c.FlutterAddViewResult) callconv(.C) void {}
+
+pub fn compute_platform_resolved_locale_callback(
+    locales: [*c][*c]const c.FlutterLocale,
+    _: usize,
+) callconv(.C) [*c]const c.FlutterLocale {
+    std.debug.print("Running the locales thingy\n", .{});
+    return locales[0];
+}
+pub fn log_message_callback(tag: [*c]const u8, message: [*c]const u8, _: ?*anyopaque) callconv(.C) void {
+    std.debug.print("{s}: {s}", .{ tag, message });
+}

@@ -1,7 +1,7 @@
-const c = @import("c_imports.zig").c;
+const c = @import("../c_imports.zig").c;
 const std = @import("std");
-const FLWindow = @import("fl_window.zig").FLWindow;
-const FLEmbedder = @import("embedder.zig").FLEmbedder;
+const FLWindow = @import("../fl_window.zig").FLWindow;
+const FLEmbedder = @import("../embedder.zig").FLEmbedder;
 
 pub const wl_pointer_listener = c.wl_pointer_listener{
     .leave = pointer_leave_handler,
