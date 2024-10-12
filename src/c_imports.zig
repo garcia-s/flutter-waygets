@@ -6,6 +6,8 @@ pub const c = @cImport({
     @cInclude("EGL/eglext.h");
     @cInclude("GL/glu.h");
     @cInclude("GL/glext.h");
+    @cInclude("libudev.h");
+    @cInclude("libinput.h");
     @cInclude("GL/gl.h");
     @cInclude("wayland-client.h");
     @cInclude("wlr-layer-shell-unstable-v1-client-protocol.h");

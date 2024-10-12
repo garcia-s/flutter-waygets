@@ -6,6 +6,7 @@ const FLWindow = @import("fl_window.zig").FLWindow;
 const PointerManager = @import("pointer_manager.zig").PointerManager;
 const KeyboardManager = @import("keyboard_manager.zig").KeyboardManager;
 const PointerViewInfo = @import("pointer_manager.zig").PointerViewInfo;
+const InputManager = @import("input.zig").InputManager;
 
 const get_aot_data = @import("fl_aot.zig").get_aot_data;
 const create_renderer_config = @import("fl_render_config.zig").create_renderer_config;
@@ -47,38 +48,47 @@ pub const FLEmbedder = struct {
     ///The ammount of current windows alive in the current flutter
     window_count: i64 = 0,
 
+    ///libinput FD
+    input: InputManager = InputManager{},
+
     pub fn init(self: *FLEmbedder, path: *[:0]u8) !void {
         const alloc = self.gpa.allocator();
         //Init all the wayland and EGL stuff
         try self.egl.init();
-        //Create a dispatch loop
+        //Create a dispatch wl_loop
+        // libinput = libinput_udev_create_context(&interface, NULL, udev);
+        //    libinput_udev_assign_seat(libinput, "seat0");
+        //
+        //    // Add libinput's file descriptor to the Wayland event loop
+        //    int libinput_fd = libinput_get_fd(libinput);
+        //    wl_event_loop_add_fd(loop, libinput_fd, WL_EVENT_READABLE, libinput_fd_callback, libinput);
+        try self.input.init();
         _ = try std.Thread.spawn(.{}, wl_loop, .{self.egl.wl_display});
-
         //Mouse doesn't need to be initialized but keyboard
         //does need to create a xkb context, whatever that means
-        try self.keyboard.init();
-
-        const pointer = c.wl_seat_get_pointer(self.egl.seat) orelse {
-            std.debug.print("Failed to retrieve a pointer", .{});
-            return error.ErrorRetrievingPointer;
-        };
-
-        _ = c.wl_pointer_add_listener(
-            pointer,
-            &wl_pointer_listener,
-            self,
-        );
-
-        const keyboard = c.wl_seat_get_keyboard(self.egl.seat) orelse {
-            std.debug.print("Failed to retrieve a pointer", .{});
-            return error.ErrorRetrievingPointer;
-        };
-
-        _ = c.wl_keyboard_add_listener(
-            keyboard,
-            &wl_keyboard_listener,
-            self,
-        );
+        // try self.keyboard.init();
+        //
+        // const pointer = c.wl_seat_get_pointer(self.egl.seat) orelse {
+        //     std.debug.print("Failed to retrieve a pointer", .{});
+        //     return error.ErrorRetrievingPointer;
+        // };
+        //
+        // _ = c.wl_pointer_add_listener(
+        //     pointer,
+        //     &wl_pointer_listener,
+        //     self,
+        // );
+        //
+        // const keyboard = c.wl_seat_get_keyboard(self.egl.seat) orelse {
+        //     std.debug.print("Failed to retrieve a pointer", .{});
+        //     return error.ErrorRetrievingPointer;
+        // };
+        //
+        // _ = c.wl_keyboard_add_listener(
+        //     keyboard,
+        //     &wl_keyboard_listener,
+        //     self,
+        // );
 
         //init window context
         self.windows = std.AutoHashMap(i64, FLWindow).init(alloc);

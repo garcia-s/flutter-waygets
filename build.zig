@@ -16,6 +16,7 @@ pub fn build(b: *std.Build) void {
     exe.linkSystemLibrary("egl");
     exe.linkSystemLibrary("opengl");
     // exe.linkSystemLibrary("glfw3");
+    exe.linkSystemLibrary("libinput");
     exe.linkSystemLibrary("wayland-egl");
     exe.linkSystemLibrary("wayland-client");
     exe.linkSystemLibrary("xkbcommon");
