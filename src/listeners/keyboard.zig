@@ -81,27 +81,20 @@ fn keyboard_leave_handler(
 fn keyboard_key_handler(
     data: ?*anyopaque,
     _: ?*c.wl_keyboard,
-    //serial
-    _: u32,
-    //time
-    _: u32,
-    //key
-    k: u32,
-    //key_state
-    state: u32,
+    _: u32, //serial
+    _: u32, //time
+    k: u32, //key
+    state: u32, //key_state
 ) callconv(.C) void {
     // how to handle the damn keyboard,
     const e: *FLEmbedder = @ptrCast(@alignCast(data));
 
-    std.debug.print("Key pressed\n", .{});
     if (e.keyboard.xkb.keymap == null or
         e.keyboard.xkb.state == null or
         e.keyboard.xkb.context == null) return;
 
-    if (state == 1) return;
-
     if (e.keyboard.edit_state != null)
-        return e.keyboard.handleTextInput(e.engine, k);
+        return e.keyboard.handleTextInput(e.engine, k, state);
 }
 
 ///Keep for RawKeyboardEvent implementation

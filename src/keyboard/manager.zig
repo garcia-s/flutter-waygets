@@ -1,8 +1,8 @@
-const c = @import("c_imports.zig").c;
+const c = @import("../c_imports.zig").c;
 const std = @import("std");
-const TextInputClient = @import("channels/textinput.zig").TextInputClient;
-const EditingValue = @import("channels/textinput.zig").EditingValue;
-
+const TextInputClient = @import("../channels/textinput.zig").TextInputClient;
+const EditingValue = @import("../channels/textinput.zig").EditingValue;
+const udev = @import("./udev.zig");
 const update_fmt =
     \\{{
     \\  "method":"TextInputClient.updateEditingState",
@@ -46,6 +46,7 @@ pub const KeyboardManager = struct {
         self.json_buff = self.gp.allocator().alloc(u8, 1024) catch {
             return;
         };
+
         self.xkb.context = c.xkb_context_new(c.XKB_CONTEXT_NO_FLAGS);
         if (self.xkb.context == null) {
             return error.FailedTocreateKeyboardContext;
@@ -60,58 +61,68 @@ pub const KeyboardManager = struct {
     }
 
     ///This function handles the keyboard whenever an input field is focused
-    pub fn handleTextInput(self: *KeyboardManager, engine: c.FlutterEngine, key: u32) void {
-        const in = c.xkb_state_key_get_utf8(
-            self.xkb.state,
-            key + 8,
-            self.key_buff.ptr,
-            self.key_buff.len,
-        );
+    pub fn handleTextInput(
+        self: *KeyboardManager,
+        engine: c.FlutterEngine,
+        key: u32,
+        state: u32,
+    ) void {
+        if (state >= 1) return;
+        if (key == udev.KEY_BACKSPACE) {
+            std.debug.print("Key backspase\n", .{});
+            const len = self.edit_state.?.text.len;
+            if (len != 0)
+                self.edit_state.?.text =
+                    self.edit_state.?.text[0 .. len - 1];
+        } else {
+            const end = c.xkb_state_key_get_utf8(
+                self.xkb.state,
+                key + 8,
+                self.key_buff.ptr,
+                self.key_buff.len,
+            );
 
-        self.edit_state.?.text = std.fmt.allocPrint(
-            self.gp.allocator(),
-            "{s}{s}",
-            .{ self.edit_state.?.text, self.key_buff[0..@intCast(in)] },
-        ) catch {
-            std.debug.print("Not working correctly", .{});
-            return;
-        };
+            self.edit_state.?.text = std.fmt.allocPrint(
+                self.gp.allocator(),
+                "{s}{s}",
+                .{
+                    self.edit_state.?.text,
+                    self.key_buff[0..@intCast(end)],
+                },
+            ) catch return;
+        }
 
-        self.edit_state.?.selectionBase = @intCast(self.edit_state.?.text.len);
-        self.edit_state.?.selectionExtent = @intCast(self.edit_state.?.text.len);
+        self.edit_state.?.selectionBase =
+            @intCast(self.edit_state.?.text.len);
 
+        self.edit_state.?.selectionExtent =
+            @intCast(self.edit_state.?.text.len);
+
+        self.dispatch_input_event(engine);
+    }
+
+    fn dispatch_input_event(self: *KeyboardManager, engine: c.FlutterEngine) void {
         const json = std.json.stringifyAlloc(
             self.gp.allocator(),
             self.edit_state,
             .{},
-        ) catch {
-            std.debug.print("Not working correctly", .{});
-            return;
-        };
+        ) catch return;
 
         defer self.gp.allocator().free(json);
-        const b = std.fmt.bufPrint(self.json_buff, update_fmt, .{
-            self.current_id,
-            json,
-        }) catch |err| {
-            std.debug.print("Cannot print to buffer {?}\n", .{err});
-            return;
-        };
 
-        std.debug.print("buff", .{});
+        const b = std.fmt.bufPrint(
+            self.json_buff,
+            update_fmt,
+            .{ self.current_id, json },
+        ) catch return;
+
+        self.message.channel = @constCast("flutter/textinput");
         self.message.message = b.ptr;
         self.message.message_size = b.len;
-        self.message.channel = @constCast(
-            "flutter/textinput",
-        );
 
-        const r = c.FlutterEngineSendPlatformMessage(
+        _ = c.FlutterEngineSendPlatformMessage(
             engine,
             &self.message,
         );
-
-        if (r != c.kSuccess) {
-            std.debug.print("Not working correctly\n", .{});
-        }
     }
 };

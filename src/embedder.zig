@@ -4,7 +4,7 @@ const WLEgl = @import("wl_egl.zig").WLEgl;
 const FLView = @import("fl_view.zig").FLView;
 const FLWindow = @import("fl_window.zig").FLWindow;
 const PointerManager = @import("pointer_manager.zig").PointerManager;
-const KeyboardManager = @import("keyboard_manager.zig").KeyboardManager;
+const KeyboardManager = @import("keyboard/manager.zig").KeyboardManager;
 const PointerViewInfo = @import("pointer_manager.zig").PointerViewInfo;
 
 const get_aot_data = @import("fl_aot.zig").get_aot_data;
