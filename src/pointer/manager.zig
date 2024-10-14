@@ -1,10 +1,9 @@
-const c = @import("c_imports.zig").c;
+const c = @import("../c_imports.zig").c;
 const std = @import("std");
 
 //Maybe useful
 pub const PointerViewInfo = struct {
     view_id: i64,
-    //maybe more infor
 };
 
 pub const PointerManager = struct {

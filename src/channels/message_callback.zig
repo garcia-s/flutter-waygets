@@ -1,5 +1,5 @@
 const std = @import("std");
-const FLView = @import("../fl_view.zig").FLView;
+const WindowConfig = @import("../window/window.zig").WindowConfig;
 const c = @import("../c_imports.zig").c;
 const FLEmbedder = @import("../embedder.zig").FLEmbedder;
 const MessageHandler = @import("handler.zig").MessageHandler;

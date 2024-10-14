@@ -1,6 +1,6 @@
-const c = @import("c_imports.zig").c;
-const FLEmbedder = @import("embedder.zig").FLEmbedder;
-const FLWindow = @import("fl_window.zig").FLWindow;
+const c = @import("../c_imports.zig").c;
+const FLEmbedder = @import("../embedder.zig").FLEmbedder;
+const FLWindow = @import("../window/window.zig").FLWindow;
 const std = @import("std");
 
 pub fn create_renderer_config() c.FlutterOpenGLRendererConfig {

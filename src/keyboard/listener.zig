@@ -8,6 +8,7 @@ pub const wl_keyboard_listener = c.wl_keyboard_listener{
     .leave = keyboard_leave_handler,
     .key = keyboard_key_handler,
     .modifiers = keyboard_modifiers_handler,
+    .repeat_info = repeat_info,
 };
 
 // Keyboard event handlers
@@ -107,7 +108,6 @@ const MessageEvent = struct {
     // code: []u8,
     // location: u32,
     keyCode: u32,
-
     specifiedLogicalKey: u32,
     // metaState: u32,
 };
@@ -136,3 +136,10 @@ fn keyboard_modifiers_handler(
         group,
     );
 }
+
+fn repeat_info(
+    _: ?*anyopaque,
+    _: ?*c.wl_keyboard,
+    _: i32,
+    _: i32,
+) callconv(.C) void {}

@@ -1,7 +1,7 @@
 const std = @import("std");
-const c = @import("c_imports.zig").c;
-const FLView = @import("fl_view.zig").FLView;
-const WLEgl = @import("wl_egl.zig").WLEgl;
+const c = @import("../c_imports.zig").c;
+const WindowConfig = @import("config.zig").WindowConfig;
+const WindowManager = @import("manager.zig").WindowManager;
 
 const ctx_attrib: [*c]c.EGLint = @constCast(&[_]c.EGLint{
     c.EGL_CONTEXT_CLIENT_VERSION, 2,
@@ -19,8 +19,8 @@ pub const FLWindow = struct {
 
     pub fn init(
         self: *FLWindow,
-        wl_egl: *WLEgl,
-        view: *const FLView,
+        wl_egl: *WindowManager,
+        view: *const WindowConfig,
     ) !void {
         self.wl_surface = c.wl_compositor_create_surface(wl_egl.compositor) orelse {
             std.debug.print("failed to get a wayland surface\n", .{});

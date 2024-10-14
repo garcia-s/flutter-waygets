@@ -1,19 +1,18 @@
 const std = @import("std");
 const c = @import("c_imports.zig").c;
-const WLEgl = @import("wl_egl.zig").WLEgl;
-const FLView = @import("fl_view.zig").FLView;
-const FLWindow = @import("fl_window.zig").FLWindow;
-const PointerManager = @import("pointer_manager.zig").PointerManager;
+const PointerManager = @import("pointer/manager.zig").PointerManager;
 const KeyboardManager = @import("keyboard/manager.zig").KeyboardManager;
-const PointerViewInfo = @import("pointer_manager.zig").PointerViewInfo;
-
-const get_aot_data = @import("fl_aot.zig").get_aot_data;
-const create_renderer_config = @import("fl_render_config.zig").create_renderer_config;
-const create_flutter_compositor = @import("fl_compositor.zig").create_flutter_compositor;
+const PointerViewInfo = @import("pointer/manager.zig").PointerViewInfo;
+const WindowManager = @import("window/manager.zig").WindowManager;
+const WindowConfig = @import("window/config.zig").WindowConfig;
+const FLWindow = @import("window/window.zig").FLWindow;
+const get_aot_data = @import("flutter/aot.zig").get_aot_data;
+const create_renderer_config = @import("flutter/renderer_config.zig").create_renderer_config;
+const create_flutter_compositor = @import("flutter/compositor.zig").create_flutter_compositor;
 const platform_message_callback = @import("./channels/message_callback.zig").platform_message_callback;
-const wl_keyboard_listener = @import("./listeners/keyboard.zig").wl_keyboard_listener;
-const wl_pointer_listener = @import("./listeners/pointer.zig").wl_pointer_listener;
-const task = @import("fl_task_runners.zig");
+const wl_keyboard_listener = @import("./keyboard/listener.zig").wl_keyboard_listener;
+const wl_pointer_listener = @import("./pointer/listener.zig").wl_pointer_listener;
+const task = @import("flutter/task_runners.zig");
 
 ///Main embedder interface
 pub const FLEmbedder = struct {
@@ -21,7 +20,7 @@ pub const FLEmbedder = struct {
         std.heap.GeneralPurposeAllocator(.{}){},
 
     ///A struct to manage everything related to egl-wayland
-    egl: WLEgl = WLEgl{},
+    egl: WindowManager = WindowManager{},
 
     ///Flutter engine instance
     engine: c.FlutterEngine = undefined,
@@ -181,7 +180,7 @@ pub const FLEmbedder = struct {
         }
     }
 
-    pub fn add_view(self: *FLEmbedder, view: FLView) !void {
+    pub fn add_view(self: *FLEmbedder, view: WindowConfig) !void {
         //TODO: Might need to move this to a windows manager struct
         var window = FLWindow{};
 

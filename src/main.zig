@@ -1,6 +1,5 @@
 const std = @import("std");
 const FLEmbedder = @import("embedder.zig").FLEmbedder;
-const FLView = @import("fl_view.zig").FLView;
 
 pub fn main() anyerror!void {
     const alloc = std.heap.page_allocator;

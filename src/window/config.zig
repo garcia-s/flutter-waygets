@@ -1,4 +1,4 @@
-pub const FLView = struct {
+pub const WindowConfig = struct {
     name: []u8,
     width: u32,
     height: u32,

@@ -43,5 +43,5 @@ Instructions for running this madness can be found [here](./instructions.md). Co
     
 - A way to comunicate with hyprland workspaces
 - Support for other input devices
-- A Display manager version ???? I'll definitely love to be able to do a whlode DE in just flutter
+- A Display manager version ???? I'll definitely love to be able to do a whole DE in just flutter
     

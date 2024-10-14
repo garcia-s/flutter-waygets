@@ -1,8 +1,8 @@
-const c = @import("c_imports.zig").c;
+const c = @import("../c_imports.zig").c;
 const std = @import("std");
-const FLView = @import("fl_view.zig").FLView;
-const FLWindow = @import("fl_window.zig").FLWindow;
-const wl_registry_listener = @import("./listeners/registry.zig").wl_registry_listener;
+const WindowConfig = @import("config.zig").WindowConfig;
+const FLWindow = @import("window.zig").FLWindow;
+const wl_registry_listener = @import("../listeners/registry.zig").wl_registry_listener;
 
 const config_attrib = [_]c.EGLint{
     c.EGL_RENDERABLE_TYPE, c.EGL_OPENGL_ES2_BIT,
@@ -21,7 +21,7 @@ const ctx_attrib: [*c]c.EGLint = @constCast(&[_]c.EGLint{
     c.EGL_NONE,
 });
 
-pub const WLEgl = struct {
+pub const WindowManager = struct {
     wl_display: *c.wl_display = undefined,
     registry: *c.wl_registry = undefined,
     compositor: *c.wl_compositor = undefined,
@@ -35,7 +35,7 @@ pub const WLEgl = struct {
     resource_context: c.EGLContext = undefined,
     //should have the contexts
 
-    pub fn init(self: *WLEgl) !void {
+    pub fn init(self: *WindowManager) !void {
         //TODO: GET ALL THE SCREENS
         self.wl_display = c.wl_display_connect(null) orelse {
             std.debug.print("Failed to get a wayland display\n", .{});

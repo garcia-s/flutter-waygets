@@ -1,5 +1,5 @@
 const std = @import("std");
-const c = @import("c_imports.zig").c;
+const c = @import("../c_imports.zig").c;
 
 const SymbolUnavailable = error.SymbolUnavailable;
 

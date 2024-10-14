@@ -1,7 +1,7 @@
-const c = @import("c_imports.zig").c;
+const c = @import("../c_imports.zig").c;
 const std = @import("std");
-const FLEmbedder = @import("embedder.zig").FLEmbedder;
-const FLWindow = @import("fl_window.zig").FLWindow;
+const FLEmbedder = @import("../embedder.zig").FLEmbedder;
+const FLWindow = @import("../window/window.zig").FLWindow;
 
 pub const stubData = struct {
     fbo: *c_uint = undefined,

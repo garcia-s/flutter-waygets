@@ -1,7 +1,7 @@
 const std = @import("std");
 const c = @import("../c_imports.zig").c;
 const FLEmbedder = @import("../embedder.zig").FLEmbedder;
-const FLView = @import("../fl_view.zig").FLView;
+const WindowConfig = @import("../window/config.zig").WindowConfig;
 const MessageHandler = @import("handler.zig").MessageHandler;
 
 const platform_channel = std.StaticStringMap(MessageHandler).initComptime(.{
@@ -37,7 +37,7 @@ fn add_view_handler(
     const alloc = gp.allocator();
 
     const p = std.json.parseFromSlice(
-        struct { method: []u8, args: [1]FLView },
+        struct { method: []u8, args: [1]WindowConfig },
         alloc,
         str,
         .{ .ignore_unknown_fields = true },
@@ -74,7 +74,7 @@ fn remove_view_handler(
 
     const p = std.json.parseFromSlice(struct {
         method: []u8,
-        args: [1]FLView,
+        args: [1]WindowConfig,
     }, alloc, str, .{ .ignore_unknown_fields = true }) catch |err| {
         std.debug.print("Error: {?}", .{err});
         return;
