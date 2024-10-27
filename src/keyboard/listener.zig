@@ -104,11 +104,12 @@ fn keyboard_key_handler(
     // how to handle the damn keyboard,
     const e: *KeyboardManager = @ptrCast(@alignCast(data));
 
-    if (state == 1) {
-        e.udev_key = k;
-        return;
+    switch (state) {
+        0 => e.udev_key = null,
+        1 => e.udev_key = k,
+        else => {},
     }
-
+    std.debug.print("Pressing\n", .{});
     e.handle_key() catch return;
 }
 

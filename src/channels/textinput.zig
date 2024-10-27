@@ -14,7 +14,6 @@ const TextInputHandler = *const fn (
 const textinput_channel = std.StaticStringMap(TextInputHandler).initComptime(.{
     .{ "TextInput.setEditingState", set_editing_state },
     .{ "TextInput.setClient", set_client },
-
     // TextInput.setEditableSizeAndTransform
     // TextInput.setMarkedTextRect
     // TextInput.setStyle
@@ -31,7 +30,7 @@ pub fn textinput_channel_handler(
 ) anyerror!void {
     var gp = std.heap.GeneralPurposeAllocator(.{}){};
 
-    std.debug.print("Message: {s}", .{message});
+    // std.debug.print("Message: {s}", .{message});
     const p = std.json.parseFromSlice(
         std.json.Value,
         gp.allocator(),
@@ -74,11 +73,12 @@ pub fn set_editing_state(
         embedder.keyboard.input.gp.allocator(),
         a,
         .{ .ignore_unknown_fields = true },
-    ) catch return send_empty_response(embedder, handle);
+    ) catch return send_empty_response(
+        embedder,
+        handle,
+    );
 
-    var client = embedder.keyboard.input.text_client orelse return;
-    client.EditingValue = p.value;
-
+    embedder.keyboard.input.editing_value = p.value;
     return send_empty_response(embedder, handle);
 }
 
@@ -91,18 +91,23 @@ pub fn set_client(
         return send_empty_response(embedder, handle);
     };
 
-    embedder.keyboard.current_id = a.array.items[0].integer;
+    embedder.keyboard.input.current_id = a.array.items[0].integer;
 
+    std.debug.print("Before Parsing \n", .{});
     const p = std.json.parseFromValue(
         TextInputClient,
         embedder.keyboard.input.gp.allocator(),
         a.array.items[1],
         .{ .ignore_unknown_fields = true },
-    ) catch return send_empty_response(
-        embedder,
-        handle,
-    );
+    ) catch |e| {
+        std.debug.print("Error parsing, {?}\n", .{e});
+        return send_empty_response(
+            embedder,
+            handle,
+        );
+    };
 
+    std.debug.print("Test can we pass the parser \n", .{});
     embedder.keyboard.input.text_client = p.value;
 
     //TODO: Don't know if this is the way to respond

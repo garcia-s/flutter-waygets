@@ -13,6 +13,9 @@ pub fn main() anyerror!void {
     try embedder.init(&args[1]);
 
     embedder.run() catch |err| {
-        std.debug.print("Error running Flutter embedder: {?}\n ", .{err});
+        std.debug.print(
+            "Error running Flutter embedder: {?}\n ",
+            .{err},
+        );
     };
 }

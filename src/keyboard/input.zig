@@ -6,13 +6,14 @@ const TextInputClient = @import("../messages/textinput.zig").TextInputClient;
 const EditingValue = @import("../messages/textinput.zig").EditingValue;
 
 const update = "TextInputClient.updateEditingState";
+const performAction = "TextInputClient.performAction";
 
 const update_fmt =
     \\{{
     \\  "method":"{s}",
     \\  "args": [
     \\      {d}, 
-    \\          {s}
+    \\      {s}
     \\  ]
     \\}}
 ;
@@ -20,9 +21,12 @@ const update_fmt =
 pub const InputManager = struct {
     gp: std.heap.GeneralPurposeAllocator(.{}) =
         std.heap.GeneralPurposeAllocator(.{}){},
+
+    current_id: i64 = 0,
     key_buff: []u8 = undefined,
     json_buff: []u8 = undefined,
     text_client: ?TextInputClient = null,
+    editing_value: ?EditingValue = null,
     message: c.FlutterPlatformMessage = c.FlutterPlatformMessage{
         .struct_size = @sizeOf(c.FlutterPlatformMessage),
         .channel = @constCast("flutter/textinput"),
@@ -107,7 +111,7 @@ pub const InputManager = struct {
     }
 
     pub fn handle_backspace(self: *InputManager, engine: c.FlutterEngine) void {
-        var edit = &self.text_client.?.EditingValue;
+        var edit = self.editing_value orelse return;
         const len = edit.text.len;
         if (len != 0) {
             edit.text = edit.text[0 .. len - 1];
@@ -117,19 +121,34 @@ pub const InputManager = struct {
         //TODO: maybe hook it up to a system sound efect
     }
 
-    pub fn handle_submit(self: *InputManager, _: c.FlutterEngine) void {
+    pub fn handle_submit(self: *InputManager, engine: c.FlutterEngine) void {
         //TODO: figure out how to handle submit
+        const a = std.fmt.allocPrint(self.gp.allocator(),
+            \\"{s}"
+        , .{
+            self.text_client.?.inputAction,
+        }) catch return;
+
+        defer self.gp.allocator().free(a);
+
         const b = std.fmt.bufPrint(
             self.json_buff,
             update_fmt,
             .{
-                self.text_client.?.inputAction,
-                1,
-                "{}",
+                performAction,
+                self.current_id,
+                a,
             },
         ) catch return;
 
         self.message.message = b.ptr;
         self.message.message_size = b.len;
+
+        _ = c.FlutterEngineSendPlatformMessage(
+            engine,
+            &self.message,
+        );
+
+        std.debug.print("Sent the fking thing \n", .{});
     }
 };
