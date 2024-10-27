@@ -2,55 +2,14 @@ const std = @import("std");
 const c = @import("../c_imports.zig").c;
 const MessageHandler = @import("handler.zig").MessageHandler;
 const FLEmbedder = @import("../embedder.zig").FLEmbedder;
+const TextInputClient = @import("../messages/textinput.zig").TextInputClient;
+const EditingValue = @import("../messages/textinput.zig").EditingValue;
 
 const TextInputHandler = *const fn (
     *const ?std.json.Value,
     *FLEmbedder,
     ?*const c.FlutterPlatformMessageResponseHandle,
 ) anyerror!void;
-
-pub const TextInputClient = struct {
-    viewId: i64,
-    obscureText: bool,
-    autocorrect: bool,
-    smartDashesType: u32,
-    smartQuotesType: u32,
-    enableSuggestions: bool,
-    enableInteractiveSelection: bool,
-    actionLabel: ?[]u8,
-    inputAction: []u8,
-    textCapitalization: []u8,
-    keyboardAppearance: []u8,
-    enableIMEPersonalizedLearning: bool,
-    contentCommitMimeTypes: [][]u8,
-    enableDeltaModel: bool,
-    inputType: InputType,
-    EditingValue: EditingValue,
-    autofill: AutoFill,
-};
-
-const InputType = struct {
-    //FIXME: I don't know if this is the correct type
-    signed: ?[]u8,
-    decimal: ?[]u8,
-    readOnly: bool,
-};
-
-pub const EditingValue = struct {
-    text: []u8,
-    selectionBase: i32,
-    selectionExtent: i32,
-    selectionAffinity: []u8,
-    selectionIsDirectional: bool,
-    composingBase: i32,
-    composingExtent: i32,
-};
-
-const AutoFill = struct {
-    uniqueIdentifier: []u8,
-    hints: [][]u8,
-    editingValue: EditingValue,
-};
 
 const textinput_channel = std.StaticStringMap(TextInputHandler).initComptime(.{
     .{ "TextInput.setEditingState", set_editing_state },
@@ -72,6 +31,7 @@ pub fn textinput_channel_handler(
 ) anyerror!void {
     var gp = std.heap.GeneralPurposeAllocator(.{}){};
 
+    std.debug.print("Message: {s}", .{message});
     const p = std.json.parseFromSlice(
         std.json.Value,
         gp.allocator(),
@@ -111,12 +71,14 @@ pub fn set_editing_state(
 
     const p = std.json.parseFromValue(
         EditingValue,
-        embedder.keyboard.gp.allocator(),
+        embedder.keyboard.input.gp.allocator(),
         a,
         .{ .ignore_unknown_fields = true },
     ) catch return send_empty_response(embedder, handle);
 
-    embedder.keyboard.edit_state = p.value;
+    var client = embedder.keyboard.input.text_client orelse return;
+    client.EditingValue = p.value;
+
     return send_empty_response(embedder, handle);
 }
 
@@ -133,7 +95,7 @@ pub fn set_client(
 
     const p = std.json.parseFromValue(
         TextInputClient,
-        embedder.keyboard.gp.allocator(),
+        embedder.keyboard.input.gp.allocator(),
         a.array.items[1],
         .{ .ignore_unknown_fields = true },
     ) catch return send_empty_response(
@@ -141,7 +103,7 @@ pub fn set_client(
         handle,
     );
 
-    embedder.keyboard.current_client = p.value;
+    embedder.keyboard.input.text_client = p.value;
 
     //TODO: Don't know if this is the way to respond
     return send_empty_response(

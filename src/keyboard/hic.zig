@@ -1,11 +1,13 @@
 pub const KEY_LEFT_CTRL = 0xE0;
 pub const KEY_LEFT_SHIFT = 0xE1;
 pub const KEY_LEFT_ALT = 0xE2;
-pub const KEY_LEFT_GUI = 0xE3; // Windows/Command key
+// Windows/Command key
+pub const KEY_LEFT_GUI = 0xE3;
 pub const KEY_RIGHT_CTRL = 0xE4;
 pub const KEY_RIGHT_SHIFT = 0xE5;
 pub const KEY_RIGHT_ALT = 0xE6;
-pub const KEY_RIGHT_GUI = 0xE7; // Windows/Command key
+// Windows/Command key
+pub const KEY_RIGHT_GUI = 0xE7;
 
 // Alphanumeric keys
 pub const KEY_A = 0x04;

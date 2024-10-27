@@ -57,7 +57,7 @@ pub const FLEmbedder = struct {
 
         //Mouse doesn't need to be initialized but keyboard
         //does need to create a xkb context, whatever that means
-        try self.keyboard.init();
+        try self.keyboard.init(self.engine);
 
         const pointer = c.wl_seat_get_pointer(self.egl.seat) orelse {
             std.debug.print("Failed to retrieve a pointer", .{});
@@ -78,7 +78,7 @@ pub const FLEmbedder = struct {
         _ = c.wl_keyboard_add_listener(
             keyboard,
             &wl_keyboard_listener,
-            self,
+            &self.keyboard,
         );
 
         //init window context

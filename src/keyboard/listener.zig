@@ -1,6 +1,6 @@
 const std = @import("std");
 const c = @import("../c_imports.zig").c;
-const FLEmbedder = @import("../embedder.zig").FLEmbedder;
+const KeyboardManager = @import("manager.zig").KeyboardManager;
 
 pub const wl_keyboard_listener = c.wl_keyboard_listener{
     .keymap = keyboard_keymap_handler,
@@ -33,10 +33,11 @@ fn keyboard_keymap_handler(
     //We only know how to xkb for now
     if (format != 1) return;
 
-    const e: *FLEmbedder = @ptrCast(@alignCast(data));
-    if (e.keyboard.xkb.fd == fd and e.keyboard.xkb.size == size) {
+    const e: *KeyboardManager = @ptrCast(@alignCast(data));
+    if (e.xkb.fd == fd and e.xkb.size == size) {
         return;
     }
+
     const m: [*:0]const u8 = @ptrFromInt(
         std.os.linux.mmap(
             null,
@@ -48,27 +49,27 @@ fn keyboard_keymap_handler(
         ),
     );
 
-    e.keyboard.xkb.keymap = c.xkb_keymap_new_from_string(
-        e.keyboard.xkb.context,
+    e.xkb.keymap = c.xkb_keymap_new_from_string(
+        e.xkb.context,
         @ptrCast(m),
         c.XKB_KEYMAP_FORMAT_TEXT_V1,
         c.XKB_KEYMAP_COMPILE_NO_FLAGS,
     );
 
-    if (e.keyboard.xkb.keymap == null) {
+    if (e.xkb.keymap == null) {
         std.debug.print("XKB Keymap failed \n", .{});
         return;
     }
     //
-    e.keyboard.xkb.state = c.xkb_state_new(e.keyboard.xkb.keymap);
-    if (e.keyboard.xkb.state == null) {
+    e.xkb.state = c.xkb_state_new(e.xkb.keymap);
+    if (e.xkb.state == null) {
         //maybe cleanup?
         std.debug.print("XKB State failed \n", .{});
         return;
     }
 
-    e.keyboard.xkb.fd = fd;
-    e.keyboard.xkb.size = size;
+    e.xkb.fd = fd;
+    e.xkb.size = size;
 }
 
 ///We do nothing in this call ???
@@ -101,10 +102,14 @@ fn keyboard_key_handler(
     state: u32, //key_state
 ) callconv(.C) void {
     // how to handle the damn keyboard,
-    const e: *FLEmbedder = @ptrCast(@alignCast(data));
+    const e: *KeyboardManager = @ptrCast(@alignCast(data));
 
-    if (e.keyboard.edit_state != null)
-        return e.keyboard.handleTextInput(e.engine, k, state);
+    if (state == 1) {
+        e.udev_key = k;
+        return;
+    }
+
+    e.handle_key() catch return;
 }
 
 ///Keep for RawKeyboardEvent implementation
@@ -117,13 +122,10 @@ fn keyboard_modifiers_handler(
     locked: u32,
     group: u32,
 ) callconv(.C) void {
-    const e: *FLEmbedder = @ptrCast(@alignCast(data));
-    if (e.keyboard.xkb.keymap == null or
-        e.keyboard.xkb.state == null or
-        e.keyboard.xkb.context == null) return;
+    const e: *KeyboardManager = @ptrCast(@alignCast(data));
 
     _ = c.xkb_state_update_mask(
-        e.keyboard.xkb.state,
+        e.xkb.state,
         depressed,
         latched,
         locked,

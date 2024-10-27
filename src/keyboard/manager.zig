@@ -3,111 +3,50 @@ const std = @import("std");
 const TextInputClient = @import("../channels/textinput.zig").TextInputClient;
 const EditingValue = @import("../channels/textinput.zig").EditingValue;
 const XKBState = @import("./xkb.zig").XKBState;
+const InputManager = @import("input.zig").InputManager;
 const udev = @import("./udev.zig");
-const update_fmt =
-    \\{{
-    \\  "method":"TextInputClient.updateEditingState",
-    \\  "args": [
-    \\      {d}, 
-    \\          {s}
-    \\  ]
-    \\}}
-;
 
 pub const KeyboardManager = struct {
     engine: c.FlutterEngine = undefined,
-    gp: std.heap.GeneralPurposeAllocator(.{}) = std.heap.GeneralPurposeAllocator(.{}){},
     xkb: XKBState = XKBState{},
+    input: InputManager = InputManager{},
+    udev_key: ?u32 = null,
+    xkb_key: ?u32 = null,
     current_id: i64 = 0,
-    key_buff: []u8 = undefined,
-    json_buff: []u8 = undefined,
-    message: c.FlutterPlatformMessage = c.FlutterPlatformMessage{
-        .struct_size = @sizeOf(c.FlutterPlatformMessage),
-    },
 
     pub fn init(self: *KeyboardManager, engine: c.FlutterEngine) !void {
         self.engine = engine;
-        self.key_buff = self.gp.allocator().alloc(u8, 2) catch {
-            return;
-        };
-
-        self.json_buff = self.gp.allocator().alloc(u8, 1024) catch {
-            return;
-        };
-
         self.xkb.context = c.xkb_context_new(c.XKB_CONTEXT_NO_FLAGS);
+        try self.input.init();
+
         if (self.xkb.context == null) {
             return error.FailedTocreateKeyboardContext;
         }
     }
 
     pub fn destroy(self: *KeyboardManager) !void {
-        const alloc = self.gp.allocator();
-        alloc.free(self.key_buff);
-        if (self.edit_state) |e| alloc.free(e);
-        if (self.current_client) |e| alloc.free(e);
+        self.input.destroy();
     }
 
-    ///This function handles the keyboard whenever an input field is focused
-    pub fn handleTextInput(
-        self: *KeyboardManager,
-        engine: c.FlutterEngine,
-        key: u32,
-    ) void {
-        if (key == udev.KEY_BACKSPACE) {
-            const len = self.edit_state.?.text.len;
-            if (len != 0)
-                self.edit_state.?.text =
-                    self.edit_state.?.text[0 .. len - 1];
-        } else {
-            const end = c.xkb_state_key_get_utf8(
-                self.xkb.state,
-                key + 8,
-                self.key_buff.ptr,
-                self.key_buff.len,
-            );
-
-            self.edit_state.?.text = std.fmt.allocPrint(
-                self.gp.allocator(),
-                "{s}{s}",
-                .{
-                    self.edit_state.?.text,
-                    self.key_buff[0..@intCast(end)],
-                },
-            ) catch return;
+    pub fn handle_key(self: *KeyboardManager) !void {
+        if (self.input.text_client != null) {
+            self.handle_input();
         }
-
-        self.edit_state.?.selectionBase =
-            @intCast(self.edit_state.?.text.len);
-
-        self.edit_state.?.selectionExtent =
-            @intCast(self.edit_state.?.text.len);
-
-        self.dispatch_input_event(engine);
+        self.handle_raw_keyboard();
     }
 
-    fn dispatch_input_event(self: *KeyboardManager, engine: c.FlutterEngine) void {
-        const json = std.json.stringifyAlloc(
-            self.gp.allocator(),
-            self.edit_state,
-            .{},
-        ) catch return;
-
-        defer self.gp.allocator().free(json);
-
-        const b = std.fmt.bufPrint(
-            self.json_buff,
-            update_fmt,
-            .{ self.current_id, json },
-        ) catch return;
-
-        self.message.channel = @constCast("flutter/textinput");
-        self.message.message = b.ptr;
-        self.message.message_size = b.len;
-
-        _ = c.FlutterEngineSendPlatformMessage(
-            engine,
-            &self.message,
-        );
+    pub fn handle_input(self: *KeyboardManager) void {
+        const key = self.udev_key orelse return;
+        switch (key) {
+            udev.KEY_BACKSPACE => {
+                self.input.handle_backspace(self.engine);
+            },
+            udev.KEY_ENTER => {
+                self.input.handle_submit(self.engine);
+            },
+            else => {},
+        }
+        if (self.udev_key == udev.KEY_BACKSPACE) {}
     }
+    pub fn handle_raw_keyboard(_: *KeyboardManager) void {}
 };

@@ -11,7 +11,6 @@ pub fn keyboard_channel_handler(
     const method = keyboard_channel.get(message) orelse {
         return error.NullMethodCall;
     };
-
     try method(message, embedder, handle);
 }
 
