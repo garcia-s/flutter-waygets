@@ -130,16 +130,24 @@ pub fn set_client(
     };
 
     embedder.keyboard.current_id = a.array.items[0].integer;
+
     const p = std.json.parseFromValue(
         TextInputClient,
         embedder.keyboard.gp.allocator(),
         a.array.items[1],
         .{ .ignore_unknown_fields = true },
-    ) catch return send_empty_response(embedder, handle);
+    ) catch return send_empty_response(
+        embedder,
+        handle,
+    );
 
     embedder.keyboard.current_client = p.value;
+
     //TODO: Don't know if this is the way to respond
-    return send_empty_response(embedder, handle);
+    return send_empty_response(
+        embedder,
+        handle,
+    );
 }
 
 pub fn send_empty_response(

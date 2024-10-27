@@ -11,6 +11,17 @@ pub const wl_keyboard_listener = c.wl_keyboard_listener{
     .repeat_info = repeat_info,
 };
 
+const MessageEvent = struct {
+    type: []u8,
+    keymap: []u8,
+    toolkit: []u8,
+    scanCode: u32,
+    modifiers: u32,
+    keyCode: u32,
+    specifiedLogicalKey: u32,
+    // metaState: u32,
+};
+
 // Keyboard event handlers
 fn keyboard_keymap_handler(
     data: ?*anyopaque,
@@ -77,7 +88,9 @@ fn keyboard_leave_handler(
     _: ?*c.wl_keyboard,
     _: u32,
     _: ?*c.wl_surface,
-) callconv(.C) void {}
+) callconv(.C) void {
+    //TODO: cleanup state
+}
 
 fn keyboard_key_handler(
     data: ?*anyopaque,
@@ -90,28 +103,11 @@ fn keyboard_key_handler(
     // how to handle the damn keyboard,
     const e: *FLEmbedder = @ptrCast(@alignCast(data));
 
-    if (e.keyboard.xkb.keymap == null or
-        e.keyboard.xkb.state == null or
-        e.keyboard.xkb.context == null) return;
-
     if (e.keyboard.edit_state != null)
         return e.keyboard.handleTextInput(e.engine, k, state);
 }
 
 ///Keep for RawKeyboardEvent implementation
-const MessageEvent = struct {
-    type: []u8,
-    keymap: []u8,
-    toolkit: []u8,
-    scanCode: u32,
-    modifiers: u32,
-    // code: []u8,
-    // location: u32,
-    keyCode: u32,
-    specifiedLogicalKey: u32,
-    // metaState: u32,
-};
-
 fn keyboard_modifiers_handler(
     data: ?*anyopaque,
     _: ?*c.wl_keyboard,

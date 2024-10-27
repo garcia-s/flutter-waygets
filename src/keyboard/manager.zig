@@ -2,6 +2,7 @@ const c = @import("../c_imports.zig").c;
 const std = @import("std");
 const TextInputClient = @import("../channels/textinput.zig").TextInputClient;
 const EditingValue = @import("../channels/textinput.zig").EditingValue;
+const XKBState = @import("./xkb.zig").XKBState;
 const udev = @import("./udev.zig");
 const update_fmt =
     \\{{
@@ -13,32 +14,19 @@ const update_fmt =
     \\}}
 ;
 
-pub const XKBState = struct {
-    fd: i32 = 0,
-    size: u32 = 0,
-    context: ?*c.struct_xkb_context = null,
-    keymap: ?*c.struct_xkb_keymap = null,
-    state: ?*c.struct_xkb_state = null,
-};
-
 pub const KeyboardManager = struct {
+    engine: c.FlutterEngine = undefined,
     gp: std.heap.GeneralPurposeAllocator(.{}) = std.heap.GeneralPurposeAllocator(.{}){},
     xkb: XKBState = XKBState{},
     current_id: i64 = 0,
-    current_client: ?TextInputClient = null,
-    edit_state: ?EditingValue = null,
     key_buff: []u8 = undefined,
     json_buff: []u8 = undefined,
     message: c.FlutterPlatformMessage = c.FlutterPlatformMessage{
         .struct_size = @sizeOf(c.FlutterPlatformMessage),
     },
 
-    event: c.FlutterKeyEvent = c.FlutterKeyEvent{
-        .struct_size = @sizeOf(c.FlutterKeyEvent),
-        .device_type = c.kFlutterKeyEventDeviceTypeKeyboard,
-    },
-
-    pub fn init(self: *KeyboardManager) !void {
+    pub fn init(self: *KeyboardManager, engine: c.FlutterEngine) !void {
+        self.engine = engine;
         self.key_buff = self.gp.allocator().alloc(u8, 2) catch {
             return;
         };
@@ -65,11 +53,8 @@ pub const KeyboardManager = struct {
         self: *KeyboardManager,
         engine: c.FlutterEngine,
         key: u32,
-        state: u32,
     ) void {
-        if (state >= 1) return;
         if (key == udev.KEY_BACKSPACE) {
-            std.debug.print("Key backspase\n", .{});
             const len = self.edit_state.?.text.len;
             if (len != 0)
                 self.edit_state.?.text =
