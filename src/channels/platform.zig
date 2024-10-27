@@ -80,7 +80,7 @@ fn remove_view_handler(
         return;
     };
 
-    try embedder.egl.windows.remove();
+    try embedder.windows.remove();
 
     defer p.deinit();
     const data = try std.fmt.allocPrintZ(
