@@ -2,6 +2,7 @@ const std = @import("std");
 const c = @import("c_imports.zig").c;
 const PointerManager = @import("pointer/manager.zig").PointerManager;
 const KeyboardManager = @import("keyboard/manager.zig").KeyboardManager;
+const InputManager = @import("textinput/manager.zig").InputManager;
 const PointerViewInfo = @import("pointer/manager.zig").PointerViewInfo;
 const WindowManager = @import("window/manager.zig").WindowManager;
 const WindowConfig = @import("window/config.zig").WindowConfig;
@@ -40,6 +41,7 @@ pub const FLEmbedder = struct {
     ///Manager for keyboard events
     keyboard: KeyboardManager = KeyboardManager{},
 
+    textinput: InputManager = InputManager{},
     ///View id to wayland surface pointer map,
     ///Flutter's custom task runner instance
     runner: task.FLTaskRunner = task.FLTaskRunner{},

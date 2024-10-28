@@ -9,5 +9,6 @@ pub const c = @cImport({
     @cInclude("GL/gl.h");
     @cInclude("wayland-client.h");
     @cInclude("wlr-layer-shell-unstable-v1-client-protocol.h");
+    @cInclude("text-input-unstable-v3-client-protocol.h");
     @cInclude("flutter_embedder.h");
 });

@@ -21,6 +21,7 @@ const registry_listeners = std.StaticStringMap(
     .{ "wl_seat", handle_seat },
     .{ "zwlr_layer_shell_v1", handle_layer_shell },
     .{ "wl_compositor", handle_compositor },
+    .{ "zwp_text_input_v3", handle_text_input },
 });
 
 fn global_registry_remover(
@@ -85,6 +86,22 @@ fn handle_layer_shell(
             registry,
             name,
             &c.zwlr_layer_shell_v1_interface,
+            version,
+        ),
+    );
+}
+
+fn handle_text_input(
+    embedder: *FLEmbedder,
+    registry: ?*c.struct_wl_registry,
+    name: u32,
+    version: u32,
+) callconv(.C) void {
+    embedder.textinput.wl_input = @ptrCast(
+        c.wl_registry_bind(
+            registry,
+            name,
+            &c.zwp_text_input_v3_interface,
             version,
         ),
     );

@@ -93,7 +93,6 @@ pub fn set_client(
 
     embedder.keyboard.input.current_id = a.array.items[0].integer;
 
-    std.debug.print("Before Parsing \n", .{});
     const p = std.json.parseFromValue(
         TextInputClient,
         embedder.keyboard.input.gp.allocator(),
@@ -107,7 +106,6 @@ pub fn set_client(
         );
     };
 
-    std.debug.print("Test can we pass the parser \n", .{});
     embedder.keyboard.input.text_client = p.value;
 
     //TODO: Don't know if this is the way to respond
