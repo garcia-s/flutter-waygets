@@ -57,7 +57,7 @@ pub const InputManager = struct {
             udev.KEY_BACKSPACE => self.handle_backspace(engine),
             //Submit
             udev.KEY_ENTER => self.handle_submit(engine),
-            udev.KEY_1...udev.KEY_0 => {},
+            udev.KEY_1...udev.KEY_MINUS,
             //Characters
             udev.KEY_Q...udev.KEY_RIGHTBRACE,
             udev.KEY_A...udev.KEY_GRAVE,
