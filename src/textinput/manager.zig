@@ -58,6 +58,16 @@ pub const InputManager = struct {
             //Submit
             udev.KEY_ENTER => self.handle_submit(engine),
             udev.KEY_1...udev.KEY_0 => {},
+            //Arrows
+            udev.KEY_LEFT => self.handle_caret_move(
+                self.editing_value.?.selectionBase -| 1,
+                engine,
+            ),
+
+            udev.KEY_RIGHT => self.handle_caret_move(
+                self.editing_value.?.selectionBase +| 1,
+                engine,
+            ),
             //Characters
             udev.KEY_Q...udev.KEY_RIGHTBRACE,
             udev.KEY_A...udev.KEY_GRAVE,
@@ -86,10 +96,11 @@ pub const InputManager = struct {
 
         self.editing_value.?.text = std.fmt.allocPrint(
             self.gp.allocator(),
-            "{s}{s}",
+            "{s}{s}{s}",
             .{
-                self.editing_value.?.text,
+                self.editing_value.?.text[0..self.editing_value.?.selectionBase],
                 self.key_buff[0..@intCast(end)],
+                self.editing_value.?.text[self.editing_value.?.selectionBase..],
             },
         ) catch return;
 
@@ -144,11 +155,11 @@ pub const InputManager = struct {
 
     pub fn handle_submit(self: *InputManager, engine: c.FlutterEngine) void {
         //TODO: figure out how to handle submit
-        const a = std.fmt.allocPrint(self.gp.allocator(),
-            \\"{s}"
-        , .{
-            self.text_client.?.inputAction,
-        }) catch return;
+        const a = std.fmt.allocPrint(
+            self.gp.allocator(),
+            "\"{s}\"",
+            .{self.text_client.?.inputAction},
+        ) catch return;
 
         defer self.gp.allocator().free(a);
 
@@ -169,5 +180,10 @@ pub const InputManager = struct {
             engine,
             &self.message,
         );
+    }
+
+    pub fn handle_caret_move(self: InputManager, pos: usize, engine: c.FlutterEngine) void {
+        self.editing_value.?.selectionBase = pos;
+        self.dispatch_input_event(engine);
     }
 };
