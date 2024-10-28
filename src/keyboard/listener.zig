@@ -7,8 +7,8 @@ pub const wl_keyboard_listener = c.wl_keyboard_listener{
     .enter = keyboard_enter_handler,
     .leave = keyboard_leave_handler,
     .key = keyboard_key_handler,
-    .modifiers = keyboard_modifiers_handler,
     .repeat_info = repeat_info,
+    .modifiers = keyboard_modifiers_handler,
 };
 
 const MessageEvent = struct {
@@ -74,43 +74,37 @@ fn keyboard_keymap_handler(
 
 ///We do nothing in this call ???
 fn keyboard_enter_handler(
-    _: ?*anyopaque,
+    data: ?*anyopaque,
     _: ?*c.wl_keyboard,
     _: u32,
     _: ?*c.wl_surface,
     _: ?*c.wl_array,
 ) callconv(.C) void {
-    // const e: *FLEmbedder = @ptrCast(@alignCast(data));
-    // e.focused = surface.?;
+    const e: *KeyboardManager = @ptrCast(@alignCast(data));
+    e.repeat_loop();
 }
 
 fn keyboard_leave_handler(
-    _: ?*anyopaque,
+    data: ?*anyopaque,
     _: ?*c.wl_keyboard,
     _: u32,
     _: ?*c.wl_surface,
 ) callconv(.C) void {
-    //TODO: cleanup state
+    const e: *KeyboardManager = @ptrCast(@alignCast(data));
+    e.stop_repeat();
 }
 
 fn keyboard_key_handler(
     data: ?*anyopaque,
     _: ?*c.wl_keyboard,
-    _: u32, //serial
+    serial: u32, //serial
     _: u32, //time
     k: u32, //key
     state: u32, //key_state
 ) callconv(.C) void {
-    // how to handle the damn keyboard,
+    std.debug.print("Pressing the key \n", .{});
     const e: *KeyboardManager = @ptrCast(@alignCast(data));
-
-    switch (state) {
-        0 => e.udev_key = null,
-        1 => e.udev_key = k,
-        else => {},
-    }
-    std.debug.print("Pressing\n", .{});
-    e.handle_key() catch return;
+    e.dispatch_key(serial, k, state);
 }
 
 ///Keep for RawKeyboardEvent implementation
@@ -124,7 +118,6 @@ fn keyboard_modifiers_handler(
     group: u32,
 ) callconv(.C) void {
     const e: *KeyboardManager = @ptrCast(@alignCast(data));
-
     _ = c.xkb_state_update_mask(
         e.xkb.state,
         depressed,
@@ -136,7 +129,7 @@ fn keyboard_modifiers_handler(
     );
 }
 
-fn repeat_info(
+pub fn repeat_info(
     _: ?*anyopaque,
     _: ?*c.wl_keyboard,
     _: i32,

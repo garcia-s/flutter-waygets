@@ -1,9 +1,9 @@
 const std = @import("std");
 const c = @import("../c_imports.zig").c;
-const MessageHandler = @import("handler.zig").MessageHandler;
+const MessageHandler = @import("../channels/handler.zig").MessageHandler;
 const FLEmbedder = @import("../embedder.zig").FLEmbedder;
-const TextInputClient = @import("../messages/textinput.zig").TextInputClient;
-const EditingValue = @import("../messages/textinput.zig").EditingValue;
+const TextInputClient = @import("messages.zig").TextInputClient;
+const EditingValue = @import("messages.zig").EditingValue;
 
 const TextInputHandler = *const fn (
     *const ?std.json.Value,

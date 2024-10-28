@@ -63,3 +63,10 @@ For what I can understand reading [here](https://learnopengl.com/Advanced-OpenGL
 A fragment in opengl is all the data required for opengl to render a single pixel
 
 ## Stencil??
+
+
+#27-01-2024
+
+For what I know now there are multiple ways to handle input, there is a textinput, a keyevent and keyboardevent or something like that
+The most important one right now is the textinput channel so we can do input events to TextFormFields and TextFields. However I don't know how many of these textinput things I have to implement, or if they are any important. So I thing I'm going to create a separed module for these
+

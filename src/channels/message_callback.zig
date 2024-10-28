@@ -5,7 +5,7 @@ const FLEmbedder = @import("../embedder.zig").FLEmbedder;
 const MessageHandler = @import("handler.zig").MessageHandler;
 const platform_channel_handler = @import("platform.zig").platform_channel_handler;
 const keyboard_channel_handler = @import("keyboard.zig").keyboard_channel_handler;
-const textinput_channel_handler = @import("textinput.zig").textinput_channel_handler;
+const textinput_channel_handler = @import("../textinput/channel.zig").textinput_channel_handler;
 
 const channel_map = std.StaticStringMap(MessageHandler).initComptime(.{
     .{ "flutter/platform", platform_channel_handler },

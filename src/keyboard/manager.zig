@@ -1,53 +1,88 @@
 const c = @import("../c_imports.zig").c;
 const std = @import("std");
-const TextInputClient = @import("../channels/textinput.zig").TextInputClient;
-const EditingValue = @import("../channels/textinput.zig").EditingValue;
+const TextInputClient = @import("../textinput/messages.zig").TextInputClient;
+const EditingValue = @import("../textinput/channel.zig").EditingValue;
 const XKBState = @import("./xkb.zig").XKBState;
-const InputManager = @import("input.zig").InputManager;
+const InputManager = @import("../textinput/manager.zig").InputManager;
 const udev = @import("./udev.zig");
 
 pub const KeyboardManager = struct {
     engine: *c.FlutterEngine = undefined,
     xkb: XKBState = XKBState{},
     input: InputManager = InputManager{},
-    udev_key: ?u32 = null,
-    xkb_key: ?u32 = null,
+    event: KeyEvent = KeyEvent{},
+    repeat: ?std.Thread = null,
+    repeating: bool = false,
 
     pub fn init(self: *KeyboardManager, engine: *c.FlutterEngine) !void {
         self.engine = engine;
-        self.xkb.context = c.xkb_context_new(c.XKB_CONTEXT_NO_FLAGS);
-        try self.input.init();
+        self.xkb.context = c.xkb_context_new(
+            c.XKB_CONTEXT_NO_FLAGS,
+        );
 
+        try self.input.init(&self.xkb);
         if (self.xkb.context == null) {
             return error.FailedTocreateKeyboardContext;
         }
     }
-
-    pub fn destroy(_: *KeyboardManager) !void {}
-
-    pub fn handle_key(self: *KeyboardManager) !void {
-        std.debug.print("Handling text_client {?} \n", .{self.input.text_client});
-        if (self.input.text_client != null) {
-            self.handle_input();
-            return;
+    pub fn dispatch_key(
+        self: *KeyboardManager,
+        serial: u32, //serial
+        key: u32,
+        state: u32,
+    ) void {
+        self.event.serial = serial;
+        self.event.key = key;
+        self.event.state = state;
+        switch (state) {
+            1 => {
+                self.input.handle_input(
+                    self.event.key,
+                    self.engine.*,
+                );
+            },
+            0 => {},
+            else => return,
         }
-        self.handle_raw_keyboard();
     }
 
-    pub fn handle_input(self: *KeyboardManager) void {
-        std.debug.print("Key pressed: {?}\n", .{self.udev_key});
-        const key = self.udev_key orelse return;
-        switch (key) {
-            udev.KEY_BACKSPACE => {
-                self.input.handle_backspace(self.engine.*);
-            },
-            udev.KEY_ENTER => {
-                std.debug.print("Enter key pressed \n", .{});
-                self.input.handle_submit(self.engine.*);
-            },
-            else => {},
+    pub fn dispatch_repeat(self: *KeyboardManager) void {
+        var serial = self.event.serial;
+        while (self.repeating) {
+            if (serial != self.event.serial) {
+                serial = self.event.serial;
+                std.time.sleep(std.time.ns_per_ms * 300);
+                continue;
+            }
+
+            if (self.event.state == 1) {
+                self.input.handle_input(
+                    self.event.key,
+                    self.engine.*,
+                );
+            }
+            std.time.sleep(std.time.ns_per_ms * 40);
         }
-        if (self.udev_key == udev.KEY_BACKSPACE) {}
     }
-    pub fn handle_raw_keyboard(_: *KeyboardManager) void {}
+
+    pub fn repeat_loop(self: *KeyboardManager) void {
+        self.repeating = true;
+        self.repeat = std.Thread.spawn(
+            .{},
+            dispatch_repeat,
+            .{self},
+        ) catch return;
+    }
+
+    pub fn stop_repeat(self: *KeyboardManager) void {
+        self.repeating = false;
+        self.repeat.?.join();
+        self.repeat = null;
+    }
+};
+
+const KeyEvent = struct {
+    serial: u32 = 0,
+    key: u32 = 0,
+    state: u32 = 0,
 };
