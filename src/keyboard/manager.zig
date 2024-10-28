@@ -14,71 +14,71 @@ pub const KeyboardManager = struct {
     repeat: ?std.Thread = null,
     repeating: bool = false,
 
-    pub fn init(self: *KeyboardManager, engine: *c.FlutterEngine) !void {
-        self.engine = engine;
-        self.xkb.context = c.xkb_context_new(
-            c.XKB_CONTEXT_NO_FLAGS,
-        );
-
-        try self.input.init(&self.xkb);
-        if (self.xkb.context == null) {
-            return error.FailedTocreateKeyboardContext;
-        }
+    pub fn init(_: *KeyboardManager, _: *c.FlutterEngine) !void {
+        //     self.engine = engine;
+        //     self.xkb.context = c.xkb_context_new(
+        //         c.XKB_CONTEXT_NO_FLAGS,
+        //     );
+        //
+        //     try self.input.init(&self.xkb);
+        //     if (self.xkb.context == null) {
+        //         return error.FailedTocreateKeyboardContext;
+        //     }
     }
-    pub fn dispatch_key(
-        self: *KeyboardManager,
-        serial: u32, //serial
-        key: u32,
-        state: u32,
-    ) void {
-        self.event.serial = serial;
-        self.event.key = key;
-        self.event.state = state;
-        switch (state) {
-            1 => {
-                self.input.handle_input(
-                    self.event.key,
-                    self.engine.*,
-                );
-            },
-            0 => {},
-            else => return,
-        }
-    }
-
-    pub fn dispatch_repeat(self: *KeyboardManager) void {
-        var serial = self.event.serial;
-        while (self.repeating) {
-            if (serial != self.event.serial) {
-                serial = self.event.serial;
-                std.time.sleep(std.time.ns_per_ms * 300);
-                continue;
-            }
-
-            if (self.event.state == 1) {
-                self.input.handle_input(
-                    self.event.key,
-                    self.engine.*,
-                );
-            }
-            std.time.sleep(std.time.ns_per_ms * 40);
-        }
-    }
-
-    pub fn repeat_loop(self: *KeyboardManager) void {
-        self.repeating = true;
-        self.repeat = std.Thread.spawn(
-            .{},
-            dispatch_repeat,
-            .{self},
-        ) catch return;
-    }
-
-    pub fn stop_repeat(self: *KeyboardManager) void {
-        self.repeating = false;
-        self.repeat.?.join();
-        self.repeat = null;
-    }
+    // pub fn dispatch_key(
+    //     self: *KeyboardManager,
+    //     serial: u32, //serial
+    //     key: u32,
+    //     state: u32,
+    // ) void {
+    //     self.event.serial = serial;
+    //     self.event.key = key;
+    //     self.event.state = state;
+    //     switch (state) {
+    //         1 => {
+    //             self.input.handle_input(
+    //                 self.event.key,
+    //                 self.engine.*,
+    //             );
+    //         },
+    //         0 => {},
+    //         else => return,
+    //     }
+    // }
+    //
+    // pub fn dispatch_repeat(self: *KeyboardManager) void {
+    //     var serial = self.event.serial;
+    //     while (self.repeating) {
+    //         if (serial != self.event.serial) {
+    //             serial = self.event.serial;
+    //             std.time.sleep(std.time.ns_per_ms * 300);
+    //             continue;
+    //         }
+    //
+    //         if (self.event.state == 1) {
+    //             self.input.handle_input(
+    //                 self.event.key,
+    //                 self.engine.*,
+    //             );
+    //         }
+    //         std.time.sleep(std.time.ns_per_ms * 40);
+    //     }
+    // }
+    //
+    // pub fn repeat_loop(self: *KeyboardManager) void {
+    //     self.repeating = true;
+    //     self.repeat = std.Thread.spawn(
+    //         .{},
+    //         dispatch_repeat,
+    //         .{self},
+    //     ) catch return;
+    // }
+    //
+    // pub fn stop_repeat(self: *KeyboardManager) void {
+    //     self.repeating = false;
+    //     self.repeat.?.join();
+    //     self.repeat = null;
+    // }
 };
 
 const KeyEvent = struct {

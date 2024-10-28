@@ -25,6 +25,7 @@ pub fn build(b: *std.Build) void {
         .files = &.{
             "./include/xdg-shell-protocol.c",
             "./include/wlr-layer-shell-unstable-v1-protocol.c",
+            "./include/text-input-unstable-v3-protocol.c",
         },
     });
 

@@ -21,10 +21,9 @@ const ctx_attrib: [*c]c.EGLint = @constCast(&[_]c.EGLint{
 });
 
 pub const WindowManager = struct {
-    ///Wayland Compositor
-    compositor: *c.wl_compositor = undefined,
-
+    seat: *c.struct_wl_seat = undefined,
     layer_shell: *c.zwlr_layer_shell_v1 = undefined,
+
     ///EGL display
     display: c.EGLDisplay = null,
     config: c.EGLConfig = null,
@@ -32,15 +31,9 @@ pub const WindowManager = struct {
     resource_context: c.EGLContext = undefined,
     //should have the contexts
 
-    pub fn init(self: *WindowManager, display: *c.wl_display) !void {
-        if (self.compositor == undefined)
-            return error.UninitializedWaylandCompositor;
-
-        if (self.layer_shell == undefined)
-            return error.UninitializedLayerShell;
-
+    pub fn init(self: *WindowManager) !void {
         self.display = c.eglGetDisplay(
-            display,
+            self.wl_display,
         );
 
         if (self.display == c.EGL_NO_DISPLAY)

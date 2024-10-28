@@ -26,10 +26,10 @@ pub fn make_current(data: ?*anyopaque) callconv(.C) bool {
     }
 
     const result = c.eglMakeCurrent(
-        embedder.egl.display,
+        embedder.window.display,
         surface,
         surface,
-        embedder.egl.context,
+        embedder.window.context,
     );
 
     if (result != c.EGL_TRUE) {
@@ -43,7 +43,7 @@ pub fn clear_current(data: ?*anyopaque) callconv(.C) bool {
     const embedder: *FLEmbedder = @ptrCast(@alignCast(data));
 
     const result = c.eglMakeCurrent(
-        embedder.egl.display,
+        embedder.window.display,
         c.EGL_NO_SURFACE,
         c.EGL_NO_SURFACE,
         c.EGL_NO_CONTEXT,
@@ -62,7 +62,7 @@ pub fn present(data: ?*anyopaque) callconv(.C) bool {
         return false;
     };
     _ = c.eglSwapBuffers(
-        embedder.egl.display,
+        embedder.window.display,
         window.surface,
     );
 
@@ -77,10 +77,10 @@ pub fn make_resource_current(data: ?*anyopaque) callconv(.C) bool {
     const embedder: *FLEmbedder = @ptrCast(@alignCast(data));
 
     const result = c.eglMakeCurrent(
-        embedder.egl.display,
+        embedder.window.display,
         c.EGL_NO_SURFACE,
         c.EGL_NO_SURFACE,
-        embedder.egl.resource_context,
+        embedder.window.resource_context,
     );
 
     std.debug.print("Error?: {x}\n", .{c.eglGetError()});

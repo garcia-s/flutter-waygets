@@ -133,10 +133,10 @@ pub fn present_view_callback(info: [*c]const c.FlutterPresentViewInfo) callconv(
     );
 
     _ = c.eglMakeCurrent(
-        emb.egl.display,
+        emb.window.display,
         window.surface,
         window.surface,
-        emb.egl.context,
+        emb.window.context,
     );
 
     for (0..info.*.layers_count) |i| {
@@ -171,7 +171,7 @@ pub fn present_view_callback(info: [*c]const c.FlutterPresentViewInfo) callconv(
         );
     }
     _ = c.eglSwapBuffers(
-        emb.egl.display,
+        emb.window.display,
         window.surface,
     );
 

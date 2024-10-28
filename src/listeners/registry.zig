@@ -1,11 +1,33 @@
 const c = @import("../c_imports.zig").c;
 const std = @import("std");
 const WindowManager = @import("../window/manager.zig").WindowManager;
+const FLEmbedder = @import("../embedder.zig").FLEmbedder;
+
+pub const RegistryHandler = *const fn (
+    *FLEmbedder,
+    ?*c.struct_wl_registry,
+    u32,
+    u32,
+) callconv(.C) void;
 
 pub const wl_registry_listener = c.wl_registry_listener{
     .global = global_registry_handler,
     .global_remove = global_registry_remover,
 };
+
+const registry_listeners = std.StaticStringMap(
+    RegistryHandler,
+).initComptime(.{
+    .{ "wl_seat", handle_seat },
+    .{ "zwlr_layer_shell_v1", handle_layer_shell },
+    .{ "wl_compositor", handle_compositor },
+});
+
+fn global_registry_remover(
+    _: ?*anyopaque,
+    _: ?*c.wl_registry,
+    _: u32,
+) callconv(.C) void {}
 
 fn global_registry_handler(
     data: ?*anyopaque,
@@ -14,47 +36,56 @@ fn global_registry_handler(
     iface: [*c]const u8,
     version: u32,
 ) callconv(.C) void {
-    const manager: *WindowManager = @ptrCast(@alignCast(data));
-
-    if (std.mem.eql(u8, std.mem.span(iface), "wl_compositor")) {
-        manager.compositor = @ptrCast(
-            c.wl_registry_bind(
-                registry,
-                name,
-                &c.wl_compositor_interface,
-                version,
-            ),
-        );
-        return;
-    }
-
-    if (std.mem.eql(u8, std.mem.span(iface), "zwlr_layer_shell_v1")) {
-        manager.layer_shell = @ptrCast(
-            c.wl_registry_bind(
-                registry,
-                name,
-                &c.zwlr_layer_shell_v1_interface,
-                version,
-            ),
-        );
-        return;
-    }
-
-    if (std.mem.eql(u8, std.mem.span(iface), "wl_seat")) {
-        manager.seat = @ptrCast(
-            c.wl_registry_bind(
-                registry,
-                name,
-                &c.wl_seat_interface,
-                3,
-            ),
-        );
-        return;
-    }
-
-    if (std.mem.eql(u8, std.mem.span(iface), "wl_output")) {
-        std.debug.print("?", .{});
-    }
+    const e: *FLEmbedder = @ptrCast(@alignCast(data));
+    const str: []const u8 = std.mem.span(iface);
+    const h = registry_listeners.get(str) orelse return;
+    h(e, registry, name, version);
 }
 
-fn global_registry_remover(_: ?*anyopaque, _: ?*c.wl_registry, _: u32) callconv(.C) void {}
+fn handle_compositor(
+    embedder: *FLEmbedder,
+    registry: ?*c.struct_wl_registry,
+    name: u32,
+    version: u32,
+) callconv(.C) void {
+    embedder.window.compositor = @ptrCast(
+        c.wl_registry_bind(
+            registry,
+            name,
+            &c.wl_compositor_interface,
+            version,
+        ),
+    );
+}
+
+fn handle_seat(
+    embedder: *FLEmbedder,
+    registry: ?*c.struct_wl_registry,
+    name: u32,
+    _: u32,
+) callconv(.C) void {
+    embedder.seat = @ptrCast(
+        c.wl_registry_bind(
+            registry,
+            name,
+            &c.wl_seat_interface,
+            3,
+        ),
+    );
+}
+
+fn handle_layer_shell(
+    embedder: *FLEmbedder,
+    registry: ?*c.struct_wl_registry,
+    name: u32,
+    version: u32,
+) callconv(.C) void {
+    embedder.window.layer_shell = @ptrCast(
+        c.wl_registry_bind(
+            registry,
+            name,
+            &c.zwlr_layer_shell_v1_interface,
+            version,
+        ),
+    );
+}
