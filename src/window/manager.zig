@@ -2,7 +2,6 @@ const c = @import("../c_imports.zig").c;
 const std = @import("std");
 const WindowConfig = @import("config.zig").WindowConfig;
 const FLWindow = @import("window.zig").FLWindow;
-const wl_registry_listener = @import("../listeners/registry.zig").wl_registry_listener;
 
 const config_attrib = [_]c.EGLint{
     c.EGL_RENDERABLE_TYPE, c.EGL_OPENGL_ES2_BIT,
@@ -22,12 +21,10 @@ const ctx_attrib: [*c]c.EGLint = @constCast(&[_]c.EGLint{
 });
 
 pub const WindowManager = struct {
-    wl_display: *c.wl_display = undefined,
-    registry: *c.wl_registry = undefined,
+    ///Wayland Compositor
     compositor: *c.wl_compositor = undefined,
-    seat: *c.struct_wl_seat = undefined,
-    layer_shell: *c.zwlr_layer_shell_v1 = undefined,
 
+    layer_shell: *c.zwlr_layer_shell_v1 = undefined,
     ///EGL display
     display: c.EGLDisplay = null,
     config: c.EGLConfig = null,
@@ -35,38 +32,15 @@ pub const WindowManager = struct {
     resource_context: c.EGLContext = undefined,
     //should have the contexts
 
-    pub fn init(self: *WindowManager) !void {
-        //TODO: GET ALL THE SCREENS
-        self.wl_display = c.wl_display_connect(null) orelse {
-            std.debug.print("Failed to get a wayland display\n", .{});
-            return error.WaylandConnectionFailed;
-        };
+    pub fn init(self: *WindowManager, display: *c.wl_display) !void {
+        if (self.compositor == undefined)
+            return error.UninitializedWaylandCompositor;
 
-        self.registry = c.wl_display_get_registry(self.wl_display) orelse {
-            std.debug.print("Failed to get the wayland registry\n", .{});
-            return error.RegistryFailed;
-        };
+        if (self.layer_shell == undefined)
+            return error.UninitializedLayerShell;
 
-        const reg_result = c.wl_registry_add_listener(
-            self.registry,
-            &wl_registry_listener,
-            self,
-        );
-        //Check if this should be done like this
-        if (reg_result < 0) {
-            std.debug.print("Failed to initialize the wayland layer shell and/or compositor\n", .{});
-            return error.MissingGlobalObjects;
-        }
-
-        // Round-trip to get the global objects
-        _ = c.wl_display_roundtrip(self.wl_display);
-
-        if (self.compositor == undefined or self.layer_shell == undefined or self.seat == undefined) {
-            std.debug.print("Failed to bind objects to registry", .{});
-            return error.MissingGlobalObjects;
-        }
         self.display = c.eglGetDisplay(
-            self.wl_display,
+            display,
         );
 
         if (self.display == c.EGL_NO_DISPLAY)

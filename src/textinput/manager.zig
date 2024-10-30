@@ -19,6 +19,7 @@ const update_fmt =
 ;
 
 pub const InputManager = struct {
+    wl_input: ?*c.struct_zwp_text_input_v3 = null,
     gp: std.heap.GeneralPurposeAllocator(.{}) =
         std.heap.GeneralPurposeAllocator(.{}){},
 

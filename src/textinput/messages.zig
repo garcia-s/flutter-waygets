@@ -1,9 +1,9 @@
 pub const TextInputClient = struct {
     viewId: i64,
-    // obscureText: bool,
-    // autocorrect: bool,
-    // smartDashesType: u32,
-    // smartQuotesType: u32,
+    obscureText: bool,
+    autocorrect: bool,
+    smartDashesType: u32,
+    smartQuotesType: u32,
     // enableSuggestions: bool,
     // enableInteractiveSelection: bool,
     // actionLabel: ?[]u8,
@@ -14,7 +14,7 @@ pub const TextInputClient = struct {
     // contentCommitMimeTypes: [][]u8,
     // enableDeltaModel: bool,
     // inputType: InputType,
-    autofill: AutoFill,
+    // autofill: AutoFill,
 };
 
 const InputType = struct {
@@ -26,7 +26,7 @@ const InputType = struct {
 
 pub const EditingValue = struct {
     text: []u8,
-    selectionBase: i32,
+    selectionBase: u32,
     selectionExtent: i32,
     selectionAffinity: []u8,
     selectionIsDirectional: bool,

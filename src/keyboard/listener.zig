@@ -99,15 +99,13 @@ fn keyboard_key_handler(
     _: ?*c.wl_keyboard,
     serial: u32, //serial
     _: u32, //time
-    k: u32, //key
+    key: u32, //key
     state: u32, //key_state
 ) callconv(.C) void {
-    std.debug.print("Pressing the key \n", .{});
     const e: *KeyboardManager = @ptrCast(@alignCast(data));
-    e.dispatch_key(serial, k, state);
+    e.dispatch_key(serial, key, state);
 }
 
-///Keep for RawKeyboardEvent implementation
 fn keyboard_modifiers_handler(
     data: ?*anyopaque,
     _: ?*c.wl_keyboard,

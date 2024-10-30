@@ -2,6 +2,7 @@ const std = @import("std");
 const c = @import("c_imports.zig").c;
 const PointerManager = @import("pointer/manager.zig").PointerManager;
 const KeyboardManager = @import("keyboard/manager.zig").KeyboardManager;
+const InputManager = @import("textinput/manager.zig").InputManager;
 const PointerViewInfo = @import("pointer/manager.zig").PointerViewInfo;
 const WindowManager = @import("window/manager.zig").WindowManager;
 const WindowConfig = @import("window/config.zig").WindowConfig;
@@ -10,6 +11,7 @@ const get_aot_data = @import("flutter/aot.zig").get_aot_data;
 const create_renderer_config = @import("flutter/renderer_config.zig").create_renderer_config;
 const create_flutter_compositor = @import("flutter/compositor.zig").create_flutter_compositor;
 const platform_message_callback = @import("./channels/message_callback.zig").platform_message_callback;
+const wl_registry_listener = @import("./listeners/registry.zig").wl_registry_listener;
 const wl_keyboard_listener = @import("./keyboard/listener.zig").wl_keyboard_listener;
 const wl_pointer_listener = @import("./pointer/listener.zig").wl_pointer_listener;
 const task = @import("flutter/task_runners.zig");
@@ -18,9 +20,17 @@ const task = @import("flutter/task_runners.zig");
 pub const FLEmbedder = struct {
     gpa: std.heap.GeneralPurposeAllocator(.{}) =
         std.heap.GeneralPurposeAllocator(.{}){},
+    ///Wayland display
+    wl_display: *c.wl_display = undefined,
+
+    ///Wayland Registry
+    registry: *c.wl_registry = undefined,
+
+    //Wayland Seat
+    seat: *c.struct_wl_seat = undefined,
 
     ///A struct to manage everything related to egl-wayland
-    egl: WindowManager = WindowManager{},
+    window: WindowManager = WindowManager{},
 
     ///Flutter engine instance
     engine: c.FlutterEngine = undefined,
@@ -31,6 +41,7 @@ pub const FLEmbedder = struct {
     ///Manager for keyboard events
     keyboard: KeyboardManager = KeyboardManager{},
 
+    textinput: InputManager = InputManager{},
     ///View id to wayland surface pointer map,
     ///Flutter's custom task runner instance
     runner: task.FLTaskRunner = task.FLTaskRunner{},
@@ -49,17 +60,41 @@ pub const FLEmbedder = struct {
     pub fn init(self: *FLEmbedder, path: *[:0]u8) !void {
         const alloc = self.gpa.allocator();
 
-        //Init all the wayland and EGL stuff
-        try self.egl.init();
+        //TODO: GET ALL THE SCREENS
+        self.wl_display = c.wl_display_connect(null) orelse {
+            return error.WaylandConnectionFailed;
+        };
+
+        self.registry = c.wl_display_get_registry(self.wl_display) orelse {
+            return error.RegistryFailed;
+        };
+
+        const reg_result = c.wl_registry_add_listener(
+            self.registry,
+            &wl_registry_listener,
+            self,
+        );
+        //Check if this should be done like this
+        if (reg_result < 0) {
+            return error.MissingGlobalObjects;
+        }
+
+        // Round-trip to get the global objects
+        _ = c.wl_display_roundtrip(self.wl_display);
+
+        if (self.seat == undefined)
+            return error.UninitializedWaylandSeat;
+
+        try self.window.init(self.wl_display);
 
         //Create a dispatch Wayland loop
-        _ = try std.Thread.spawn(.{}, wl_loop, .{self.egl.wl_display});
+        _ = try std.Thread.spawn(.{}, wl_loop, .{self.wl_display});
 
         //Mouse doesn't need to be initialized but keyboard
         //does need to create a xkb context, whatever that means
         try self.keyboard.init(&self.engine);
 
-        const pointer = c.wl_seat_get_pointer(self.egl.seat) orelse {
+        const pointer = c.wl_seat_get_pointer(self.seat) orelse {
             std.debug.print("Failed to retrieve a pointer", .{});
             return error.ErrorRetrievingPointer;
         };
@@ -70,7 +105,7 @@ pub const FLEmbedder = struct {
             self,
         );
 
-        const keyboard = c.wl_seat_get_keyboard(self.egl.seat) orelse {
+        const keyboard = c.wl_seat_get_keyboard(self.seat) orelse {
             std.debug.print("Failed to retrieve a pointer", .{});
             return error.ErrorRetrievingPointer;
         };
@@ -81,9 +116,14 @@ pub const FLEmbedder = struct {
             &self.keyboard,
         );
 
+        //TODO: Refactor this to be part of the "window manager"
         //init window context
         self.windows = std.AutoHashMap(i64, FLWindow).init(alloc);
-        self.view_surface_map = std.AutoHashMap(*c.struct_wl_surface, i64).init(alloc);
+
+        self.view_surface_map = std.AutoHashMap(
+            *c.struct_wl_surface,
+            i64,
+        ).init(alloc);
 
         const assets_path = try std.fmt.allocPrintZ(alloc, "{s}/{s}", .{
             path.*,
@@ -184,7 +224,7 @@ pub const FLEmbedder = struct {
         //TODO: Might need to move this to a windows manager struct
         var window = FLWindow{};
 
-        try window.init(&self.egl, &view);
+        try window.init(&self.window, &view);
 
         try self.windows.put(self.window_count, window);
 
