@@ -1,5 +1,6 @@
 const udev = @import("udev.zig");
 const hid = @import("hid.zig");
+
 pub fn udev_to_hid(key: i64) i64 {
     switch (key) {
         udev.KEY_ESC => return hid.KEY_ESC,

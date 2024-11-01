@@ -4,12 +4,14 @@ const TextInputClient = @import("../textinput/messages.zig").TextInputClient;
 const EditingValue = @import("../textinput/channel.zig").EditingValue;
 const XKBState = @import("./xkb.zig").XKBState;
 const InputManager = @import("../textinput/manager.zig").InputManager;
+const HWKeyboardManager = @import("../hw_keyboard/manager.zig").HWKeyboardManager;
 const udev = @import("./udev.zig");
 
 pub const KeyboardManager = struct {
     engine: *c.FlutterEngine = undefined,
     xkb: XKBState = XKBState{},
     input: InputManager = InputManager{},
+    hw_keyboard: HWKeyboardManager = HWKeyboardManager{},
     event: KeyEvent = KeyEvent{},
     repeat: ?std.Thread = null,
     repeating: bool = false,
@@ -19,8 +21,9 @@ pub const KeyboardManager = struct {
         self.xkb.context = c.xkb_context_new(
             c.XKB_CONTEXT_NO_FLAGS,
         );
-
+        self.hw_keyboard.init(self.xkb);
         try self.input.init(&self.xkb);
+
         if (self.xkb.context == null) {
             return error.FailedTocreateKeyboardContext;
         }
@@ -34,6 +37,12 @@ pub const KeyboardManager = struct {
         self.event.serial = serial;
         self.event.key = key;
         self.event.state = state;
+
+        self.hw_keyboard.handle_input(
+            self.event.key,
+            self.event.state,
+            self.engine.*,
+        );
         switch (state) {
             1 => {
                 self.input.handle_input(
