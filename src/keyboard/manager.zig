@@ -21,7 +21,8 @@ pub const KeyboardManager = struct {
         self.xkb.context = c.xkb_context_new(
             c.XKB_CONTEXT_NO_FLAGS,
         );
-        self.hw_keyboard.init(self.xkb);
+
+        self.hw_keyboard.init(&self.xkb);
         try self.input.init(&self.xkb);
 
         if (self.xkb.context == null) {
@@ -41,8 +42,9 @@ pub const KeyboardManager = struct {
         self.hw_keyboard.handle_input(
             self.event.key,
             self.event.state,
-            self.engine.*,
+            self.engine,
         );
+
         switch (state) {
             1 => {
                 self.input.handle_input(

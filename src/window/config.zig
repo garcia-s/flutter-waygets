@@ -2,7 +2,7 @@ pub const WindowConfig = struct {
     name: []u8,
     width: u32,
     height: u32,
-    exclusive_zone: i32,
+    exclusive_zone: u32,
     layer: u2,
     margin: ?[4]u16,
     anchors: WindowAnchors,

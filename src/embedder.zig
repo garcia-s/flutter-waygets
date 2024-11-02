@@ -287,5 +287,5 @@ pub fn compute_platform_resolved_locale_callback(
     return locales[0];
 }
 pub fn log_message_callback(tag: [*c]const u8, message: [*c]const u8, _: ?*anyopaque) callconv(.C) void {
-    std.debug.print("{s}: {s}", .{ tag, message });
+    std.debug.print("{s}: {s}\n", .{ tag, message });
 }

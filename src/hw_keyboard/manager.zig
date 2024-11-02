@@ -1,8 +1,7 @@
 const c = @import("../c_imports.zig").c;
 const std = @import("std");
-const TextInputClient = @import("../channels/textinput.zig").TextInputClient;
-const EditingValue = @import("../channels/textinput.zig").EditingValue;
-const XKBState = @import("./xkb.zig").XKBState;
+const EditingValue = @import("../textinput/messages.zig").EditingValue;
+const XKBState = @import("../keyboard/xkb.zig").XKBState;
 const udev_to_hid = @import("../keyboard/udev_hid.zig").udev_to_hid;
 
 pub const HWKeyboardManager = struct {
@@ -33,19 +32,19 @@ pub const HWKeyboardManager = struct {
             0 => c.kFlutterKeyEventTypeUp,
             1 => c.kFlutterKeyEventTypeDown,
             2 => c.kFlutterKeyEventTypeRepeat,
-            else => -1,
+            else => 0,
         };
 
-        self.event.timestamp = c.FlutterEngineGetCurrentTime();
-        self.event.physical = udev_to_hid(key);
+        // self.event.timestamp = c.FlutterEngineGetCurrentTime();
+        self.event.physical = @intCast(udev_to_hid(key));
         self.event.logical = c.xkb_state_key_get_one_sym(
             self.xkb.state,
             key + 8,
         );
 
         _ = c.FlutterEngineSendKeyEvent(
-            engine,
-            self.event,
+            engine.*,
+            &self.event,
             null,
             null,
         );
