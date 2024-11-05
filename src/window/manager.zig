@@ -64,7 +64,6 @@ pub const WindowManager = struct {
         );
 
         if (conf_result != c.EGL_TRUE or num_config == 0) {
-            std.debug.print("failed to get a config: (egl code {x})\n", .{c.eglGetError()});
             return error.eglchooseconfigfailed;
         }
 

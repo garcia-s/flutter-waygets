@@ -84,7 +84,7 @@ pub const FLWindow = struct {
             @intCast(view.width),
             @intCast(view.height),
         ) orelse {
-            std.debug.print("Error creating dummy window", .{});
+            std.debug.print("Error creating dummy window {d}", .{c.eglGetError()});
             return error.GetEglPlatformWindowFailed;
         };
 

@@ -20,28 +20,18 @@ Also, animations on flutter are SO EASY, that you can create something really am
 
 Instructions for running this madness can be found [here](./instructions.md). Consider this is on VERY early stages of development and I can't guarantee this to be up to date.
 
-## Current state of the project (Updated 03-10-2024)
 ## Current features (as of 03-10-2024)
 
 - Multi-windows support (as in Creating multiple wayland surfaces)
 - Simple pointer events (5 mouse buttons and things like long press)
 - Flutter rendering directly into egl-wayland surfaces
 
-## Missing features
+##TODOS:
 
-- Proper Keyboard input
-- Disposal of wayland surfaces
-- Better wl-egl control for views/windows
-- Proper engine disposal control
-- Multi-display support
-- Proper rendering with damage (to save GPU resources)
-- Sane documentation
-- Support for "flutter build" command
-- Hot reload for "real-time" flutter development
+### High-prio
 
-### Things we might need to add but are not top priority
-    
-- A way to comunicate with hyprland workspaces
-- Support for other input devices
-- A Display manager version ???? I'll definitely love to be able to do a whole DE in just flutter
-    
+- Design a real positioning, layering margin API,
+- Steal GLFW or GDK keyboard handling (we really need this asap)
+- Define layer names for panels
+- Add a translation layer for the surface scroll
+

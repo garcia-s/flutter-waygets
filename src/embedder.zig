@@ -42,6 +42,7 @@ pub const FLEmbedder = struct {
     keyboard: KeyboardManager = KeyboardManager{},
 
     textinput: InputManager = InputManager{},
+
     ///View id to wayland surface pointer map,
     ///Flutter's custom task runner instance
     runner: task.FLTaskRunner = task.FLTaskRunner{},
