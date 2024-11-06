@@ -49,7 +49,7 @@ fn keyboard_keymap_handler(
         ),
     );
 
-    defer std.os.linux.munmap(fd, size);
+    defer _ = std.os.linux.munmap(m, size);
 
     const keymap: *c.struct_xkb_keymap = c.xkb_keymap_new_from_string(
         e.xkb.context,
@@ -68,49 +68,50 @@ fn keyboard_keymap_handler(
         return;
     };
 
-    const gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer gpa.detectLeaks();
     const alloc = gpa.allocator();
 
-    var locale = std.process.getEnvVarOwned(
-        gpa.allocator(),
+    var locale: *[]u8 = null;
+    locale = std.process.getEnvVarOwned(
+        alloc,
         "LC_ALL",
-    );
+    ) catch {};
 
-    defer alloc.free(locale);
-    locale catch {
+    if (locale == null) {
         locale = std.process.getEnvVarOwned(
-            gpa.allocator(),
-            "LC_CTYPE",
-        );
-    };
-
-    locale catch {
-        locale = std.process.getEnvVarOwned(
-            gpa.allocator(),
+            alloc,
             "LANG",
-        );
-    };
+        ) catch {};
+    }
+
+    if (locale == null) {
+        locale = std.process.getEnvVarOwned(
+            alloc,
+            "LANG",
+        ) catch {};
+    }
+
+    locale catch {};
 
     locale = "C";
 
-    // if (!locale)
-    //     locale = getenv("LC_CTYPE");
-    // if (!locale)
-    //     locale = getenv("LANG");
-    // if (!locale)
-    //     locale = "C";
     const compose_table = c.xkb_compose_table_new_from_locale(
         locale,
         c.XKB_COMPOSE_COMPILE_NO_FLAGS,
     ) orelse {
         std.debug.print("Failed to create an XKB compose table", .{});
+        return;
     };
 
+    defer c.xkb_compose_table_unref(compose_table);
     e.xkb.compose = c.xkb_compose_state_new(
         compose_table,
         c.XKB_COMPOSE_COMPILE_NO_FLAGS,
-    );
+    ) orelse {
+        std.debug.print("Failed to create an XKB compose state", .{});
+        return;
+    };
 
     e.xkb.fd = fd;
     e.xkb.size = size;
