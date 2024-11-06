@@ -49,24 +49,68 @@ fn keyboard_keymap_handler(
         ),
     );
 
-    e.xkb.keymap = c.xkb_keymap_new_from_string(
+    defer std.os.linux.munmap(fd, size);
+
+    const keymap: *c.struct_xkb_keymap = c.xkb_keymap_new_from_string(
         e.xkb.context,
         @ptrCast(m),
         c.XKB_KEYMAP_FORMAT_TEXT_V1,
         c.XKB_KEYMAP_COMPILE_NO_FLAGS,
-    );
-
-    if (e.xkb.keymap == null) {
+    ) orelse {
         std.debug.print("XKB Keymap failed \n", .{});
         return;
-    }
-    //
-    e.xkb.state = c.xkb_state_new(e.xkb.keymap);
-    if (e.xkb.state == null) {
-        //maybe cleanup?
+    };
+
+    defer c.xkb_keymap_unref(keymap);
+
+    e.xkb.state = c.xkb_state_new(keymap) orelse {
         std.debug.print("XKB State failed \n", .{});
         return;
-    }
+    };
+
+    const gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    defer gpa.detectLeaks();
+    const alloc = gpa.allocator();
+
+    var locale = std.process.getEnvVarOwned(
+        gpa.allocator(),
+        "LC_ALL",
+    );
+
+    defer alloc.free(locale);
+    locale catch {
+        locale = std.process.getEnvVarOwned(
+            gpa.allocator(),
+            "LC_CTYPE",
+        );
+    };
+
+    locale catch {
+        locale = std.process.getEnvVarOwned(
+            gpa.allocator(),
+            "LANG",
+        );
+    };
+
+    locale = "C";
+
+    // if (!locale)
+    //     locale = getenv("LC_CTYPE");
+    // if (!locale)
+    //     locale = getenv("LANG");
+    // if (!locale)
+    //     locale = "C";
+    const compose_table = c.xkb_compose_table_new_from_locale(
+        locale,
+        c.XKB_COMPOSE_COMPILE_NO_FLAGS,
+    ) orelse {
+        std.debug.print("Failed to create an XKB compose table", .{});
+    };
+
+    e.xkb.compose = c.xkb_compose_state_new(
+        compose_table,
+        c.XKB_COMPOSE_COMPILE_NO_FLAGS,
+    );
 
     e.xkb.fd = fd;
     e.xkb.size = size;
