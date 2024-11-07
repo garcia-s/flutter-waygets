@@ -86,16 +86,18 @@ fn keyboard_keymap_handler(
     if (locale == null) locale = @constCast("C");
 
     const clocale = alloc.dupeZ(u8, locale.?) catch {
+        std.debug.print("Failed to dupe the locale Env variable", .{});
         return;
     };
+
     defer alloc.free(clocale);
     const compose_table = c.xkb_compose_table_new_from_locale(
         e.xkb.context,
         @ptrCast(clocale),
         c.XKB_COMPOSE_COMPILE_NO_FLAGS,
     ) orelse {
+        std.debug.print("Failed to create an XKB compose table", .{});
         return;
-        //std.debug.print("Failed to create an XKB compose table", .{});
     };
 
     defer c.xkb_compose_table_unref(compose_table);
@@ -103,9 +105,17 @@ fn keyboard_keymap_handler(
         compose_table,
         c.XKB_COMPOSE_COMPILE_NO_FLAGS,
     ) orelse {
+        std.debug.print("Failed to create an XKB compose state", .{});
         return;
-        //std.debug.print("Failed to create an XKB compose state", .{});
     };
+    // GLFW does this, IDK why but, they save the indexes but IDK if these really change
+    //
+    // _glfw.wl.xkb.controlIndex = xkb_keymap_mod_get_index(_glfw.wl.xkb.keymap, "Control");
+    // _glfw.wl.xkb.altIndex = xkb_keymap_mod_get_index(_glfw.wl.xkb.keymap, "Mod1");
+    // _glfw.wl.xkb.shiftIndex = xkb_keymap_mod_get_index(_glfw.wl.xkb.keymap, "Shift");
+    // _glfw.wl.xkb.superIndex = xkb_keymap_mod_get_index(_glfw.wl.xkb.keymap, "Mod4");
+    // _glfw.wl.xkb.capsLockIndex = xkb_keymap_mod_get_index(_glfw.wl.xkb.keymap, "Lock");
+    // _glfw.wl.xkb.numLockIndex = xkb_keymap_mod_get_index(_glfw.wl.xkb.keymap, "Mod2");
 
     e.xkb.fd = fd;
     e.xkb.size = size;

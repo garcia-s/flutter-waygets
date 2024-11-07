@@ -78,6 +78,8 @@ pub const InputManager = struct {
         engine: c.FlutterEngine,
         key: u32,
     ) void {
+
+        // var ksym: *c.xkb_keysym_t = null;
         const end = c.xkb_state_key_get_utf8(
             self.xkb.state,
             key + 8,
