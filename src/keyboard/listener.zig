@@ -43,7 +43,9 @@ fn keyboard_keymap_handler(
             null,
             size,
             std.os.linux.PROT.READ,
-            std.os.linux.MAP{ .TYPE = std.os.linux.MAP_TYPE.SHARED },
+            std.os.linux.MAP{
+                .TYPE = std.os.linux.MAP_TYPE.SHARED,
+            },
             fd,
             0,
         ),
@@ -69,39 +71,31 @@ fn keyboard_keymap_handler(
     };
 
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    defer gpa.detectLeaks();
     const alloc = gpa.allocator();
 
-    var locale: *[]u8 = null;
-    locale = std.process.getEnvVarOwned(
-        alloc,
-        "LC_ALL",
-    ) catch {};
+    var env = std.process.getEnvMap(alloc) catch {
+        std.debug.print("Failed to create get environment variables", .{});
+        return;
+    };
 
-    if (locale == null) {
-        locale = std.process.getEnvVarOwned(
-            alloc,
-            "LANG",
-        ) catch {};
-    }
+    defer env.deinit();
 
-    if (locale == null) {
-        locale = std.process.getEnvVarOwned(
-            alloc,
-            "LANG",
-        ) catch {};
-    }
+    var locale = env.get("LC_ALL");
+    if (locale == null) locale = env.get("LC_CTYPE");
+    if (locale == null) locale = env.get("LANG");
+    if (locale == null) locale = @constCast("C");
 
-    locale catch {};
-
-    locale = "C";
-
+    const clocale = alloc.dupeZ(u8, locale.?) catch {
+        return;
+    };
+    defer alloc.free(clocale);
     const compose_table = c.xkb_compose_table_new_from_locale(
-        locale,
+        e.xkb.context,
+        @ptrCast(clocale),
         c.XKB_COMPOSE_COMPILE_NO_FLAGS,
     ) orelse {
-        std.debug.print("Failed to create an XKB compose table", .{});
         return;
+        //std.debug.print("Failed to create an XKB compose table", .{});
     };
 
     defer c.xkb_compose_table_unref(compose_table);
@@ -109,8 +103,8 @@ fn keyboard_keymap_handler(
         compose_table,
         c.XKB_COMPOSE_COMPILE_NO_FLAGS,
     ) orelse {
-        std.debug.print("Failed to create an XKB compose state", .{});
         return;
+        //std.debug.print("Failed to create an XKB compose state", .{});
     };
 
     e.xkb.fd = fd;
