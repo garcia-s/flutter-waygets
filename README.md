@@ -8,14 +8,14 @@ This is a "zig" flutter embedder to create flutter widgets for wlr-layer-shell. 
 ## Screenshots 
 
 ### A calendar widget
-[calendar](./assets/calendar.png)!
+![calendar](./assets/calendar.png)
 
 ### A basic App Launcher 
-[calendar](./assets/app-menu.png)!
+![calendar](./assets/app-menu.png)
 
 
 ### A Waybar-like exclusive top bar 
-[calendar](./assets/waybar-like-bar.png)!
+![calendar](./assets/waybar-like-bar.png)
 
 ## WHY FLUTTER ??
 
