@@ -108,7 +108,10 @@ fn keyboard_keymap_handler(
         std.debug.print("Failed to create an XKB compose state", .{});
         return;
     };
+
     // GLFW does this, IDK why but, they save the indexes but IDK if these really change
+    //TODO: Friendly reminder to check how to do this. We still have a bunch of keyboard bugs
+    //
     //
     // _glfw.wl.xkb.controlIndex = xkb_keymap_mod_get_index(_glfw.wl.xkb.keymap, "Control");
     // _glfw.wl.xkb.altIndex = xkb_keymap_mod_get_index(_glfw.wl.xkb.keymap, "Mod1");
@@ -123,15 +126,12 @@ fn keyboard_keymap_handler(
 
 ///We do nothing in this call ???
 fn keyboard_enter_handler(
-    data: ?*anyopaque,
+    _: ?*anyopaque,
     _: ?*c.wl_keyboard,
     _: u32,
     _: ?*c.wl_surface,
     _: ?*c.wl_array,
-) callconv(.C) void {
-    const e: *KeyboardManager = @ptrCast(@alignCast(data));
-    e.repeat_loop();
-}
+) callconv(.C) void {}
 
 fn keyboard_leave_handler(
     data: ?*anyopaque,

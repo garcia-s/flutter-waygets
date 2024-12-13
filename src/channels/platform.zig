@@ -6,6 +6,7 @@ const MessageHandler = @import("handler.zig").MessageHandler;
 
 const platform_channel = std.StaticStringMap(MessageHandler).initComptime(.{
     .{ "add_view", add_view_handler },
+    .{ "remove_view", remove_view_handler },
 });
 
 pub fn platform_channel_handler(
@@ -74,13 +75,19 @@ fn remove_view_handler(
 
     const p = std.json.parseFromSlice(struct {
         method: []u8,
-        args: [1]WindowConfig,
+        args: [1]u32,
     }, alloc, str, .{ .ignore_unknown_fields = true }) catch |err| {
         std.debug.print("Error: {?}", .{err});
         return;
     };
 
-    try embedder.windows.remove();
+    embedder.remove_view(p.value.args[0]) catch {
+        std.debug.print(
+            "Couldn't remove the window {d}",
+            .{p.value.args[0]},
+        );
+        return;
+    };
 
     defer p.deinit();
     const data = try std.fmt.allocPrintZ(

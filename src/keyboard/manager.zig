@@ -17,6 +17,7 @@ pub const KeyboardManager = struct {
     repeating: bool = false,
 
     pub fn init(self: *KeyboardManager, engine: *c.FlutterEngine) !void {
+        self.repeat_loop();
         self.engine = engine;
         self.xkb.context = c.xkb_context_new(
             c.XKB_CONTEXT_NO_FLAGS,

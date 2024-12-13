@@ -268,7 +268,14 @@ pub const FLEmbedder = struct {
         }
     }
 
-    pub fn remove_view(_: *FLEmbedder, _: i64) !void {}
+    pub fn remove_view(self: *FLEmbedder, view_id: i64) !void {
+        var window: FLWindow = self.windows.get(view_id) orelse {
+            return error.ViewIdNotFound;
+        };
+
+        try window.destroy(self.window.display);
+        _ = self.windows.remove(view_id);
+    }
 };
 
 fn channel_update_callback(

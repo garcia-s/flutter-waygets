@@ -111,7 +111,6 @@ pub fn pointer_axis_handler(
     axis: u32, //Axis
     value: i32, //Axis value
 ) callconv(.C) void {
-    std.debug.print("Is this running? {d}\n", .{value});
     const e: *FLEmbedder = @ptrCast(@alignCast(data));
     var event = &e.pointer.event;
     event.phase = c.kHover;
