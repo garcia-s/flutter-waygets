@@ -28,6 +28,7 @@ pub const HWKeyboardManager = struct {
         state: u32,
         engine: *c.FlutterEngine,
     ) void {
+        std.debug.print("Running key", .{});
         self.event.type = switch (state) {
             0 => c.kFlutterKeyEventTypeUp,
             1 => c.kFlutterKeyEventTypeDown,

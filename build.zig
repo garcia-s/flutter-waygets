@@ -11,8 +11,8 @@ pub fn build(b: *std.Build) void {
 
     exe.linkLibC();
     exe.addIncludePath(b.path(include_dir));
-    exe.addLibraryPath(b.path("../linux-x64-embedder"));
-    exe.addSystemIncludePath(b.path("../linux-x64-embedder"));
+    exe.addLibraryPath(b.path("./engine"));
+    exe.addSystemIncludePath(b.path("./engine"));
     exe.linkSystemLibrary("egl");
     exe.linkSystemLibrary("opengl");
     // exe.linkSystemLibrary("glfw3");

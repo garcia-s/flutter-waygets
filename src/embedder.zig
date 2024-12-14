@@ -278,15 +278,17 @@ pub const FLEmbedder = struct {
     }
 };
 
+//I have no idea what this is for
 fn channel_update_callback(
     _: [*c]const c.FlutterChannelUpdate,
     _: ?*anyopaque,
-) callconv(.C) void {
-    //
-}
+) callconv(.C) void {}
 
+//Empty callback called after a flutter view is created, maybe for other channels?
+//Like for channels other than the normal channels
 pub fn add_view_callback(_: [*c]const c.FlutterAddViewResult) callconv(.C) void {}
 
+// I don't remember how this work, i'm probably going to need this function at some point
 pub fn compute_platform_resolved_locale_callback(
     locales: [*c][*c]const c.FlutterLocale,
     _: usize,
@@ -294,6 +296,7 @@ pub fn compute_platform_resolved_locale_callback(
     std.debug.print("Running the locales thingy\n", .{});
     return locales[0];
 }
+
 pub fn log_message_callback(tag: [*c]const u8, message: [*c]const u8, _: ?*anyopaque) callconv(.C) void {
     std.debug.print("{s}: {s}\n", .{ tag, message });
 }
