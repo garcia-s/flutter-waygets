@@ -1,5 +1,5 @@
 pub const WindowConfig = struct {
-    name: []u8,
+    name: [:0]u8,
     width: u32,
     height: u32,
     exclusive_zone: i16,

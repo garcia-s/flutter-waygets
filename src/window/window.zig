@@ -11,7 +11,7 @@ const ctx_attrib: [*c]c.EGLint = @constCast(&[_]c.EGLint{
 const surface_attrib = [_]c.EGLint{c.EGL_NONE};
 
 pub const FLWindow = struct {
-    name: *[]u8 = undefined,
+    config: WindowConfig,
     wl_surface: *c.struct_wl_surface = undefined,
     window: *c.struct_wl_egl_window = undefined,
     wl_layer_surface: *c.zwlr_layer_surface_v1 = undefined,
@@ -20,8 +20,10 @@ pub const FLWindow = struct {
     pub fn init(
         self: *FLWindow,
         manager: *WindowManager,
-        view: *const WindowConfig,
+        view: *WindowConfig,
     ) !void {
+        self.config = view.*;
+        self.config.height = 33;
         self.wl_surface = c.wl_compositor_create_surface(manager.compositor) orelse {
             std.debug.print("failed to get a wayland surface\n", .{});
             return error.SurfaceCreationFailed;
@@ -32,7 +34,7 @@ pub const FLWindow = struct {
             self.wl_surface,
             null,
             view.layer,
-            @ptrCast(&view.name),
+            @ptrCast(view.name.ptr),
         ) orelse {
             std.debug.print("Failed to initialize a layer surface\n", .{});
             return error.LayerSurfaceFailed;

@@ -115,10 +115,14 @@ pub fn pointer_axis_handler(
     var event = &e.pointer.event;
     event.phase = c.kHover;
     event.signal_kind = c.kFlutterPointerSignalKindScroll;
+
+    const delta: f64 = @as(f64, @floatFromInt(value)) / 120;
+
     if (axis == c.WL_POINTER_AXIS_VERTICAL_SCROLL) {
-        event.scroll_delta_y = event.scroll_delta_y + @as(f64, @floatFromInt(value));
-    } else {
-        event.scroll_delta_x = event.scroll_delta_x + @as(f64, @floatFromInt(value));
-    }
+        event.scroll_delta_y = delta;
+    } else event.scroll_delta_x = delta;
+
     _ = c.FlutterEngineSendPointerEvent(e.engine, event, 1);
+    event.scroll_delta_x = 0;
+    event.scroll_delta_y = 0;
 }

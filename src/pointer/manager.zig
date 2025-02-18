@@ -8,7 +8,6 @@ pub const PointerViewInfo = struct {
 
 pub const PointerManager = struct {
     engine: *c.FlutterEngine = undefined,
-    alloc: std.mem.Allocator = std.heap.page_allocator,
 
     event: c.FlutterPointerEvent = c.FlutterPointerEvent{
         .struct_size = @sizeOf(c.FlutterPointerEvent),

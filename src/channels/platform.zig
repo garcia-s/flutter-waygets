@@ -43,10 +43,9 @@ fn add_view_handler(
         std.debug.print("Error: {?}", .{err});
         return;
     };
-
+    defer p.deinit();
     try embedder.add_view(&(p.value.args[0]));
 
-    defer p.deinit();
     const data = try std.fmt.allocPrintZ(
         embedder.windows.gpa.allocator(),
         "[{{\"view_id\": {d} }}]",
