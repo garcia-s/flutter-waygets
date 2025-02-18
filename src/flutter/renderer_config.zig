@@ -18,7 +18,7 @@ pub fn create_renderer_config() c.FlutterOpenGLRendererConfig {
 
 pub fn make_current(data: ?*anyopaque) callconv(.C) bool {
     const embedder: *FLEmbedder = @ptrCast(@alignCast(data));
-    const window: ?FLWindow = embedder.windows.get(0);
+    const window: ?*FLWindow = embedder.windows.get(0);
     var surface: c.EGLSurface = c.EGL_NO_SURFACE;
 
     if (window != null) {
@@ -26,10 +26,10 @@ pub fn make_current(data: ?*anyopaque) callconv(.C) bool {
     }
 
     const result = c.eglMakeCurrent(
-        embedder.window.display,
+        embedder.windows.display,
         surface,
         surface,
-        embedder.window.context,
+        embedder.windows.context,
     );
 
     if (result != c.EGL_TRUE) {
@@ -43,7 +43,7 @@ pub fn clear_current(data: ?*anyopaque) callconv(.C) bool {
     const embedder: *FLEmbedder = @ptrCast(@alignCast(data));
 
     const result = c.eglMakeCurrent(
-        embedder.window.display,
+        embedder.windows.display,
         c.EGL_NO_SURFACE,
         c.EGL_NO_SURFACE,
         c.EGL_NO_CONTEXT,
@@ -58,11 +58,11 @@ pub fn clear_current(data: ?*anyopaque) callconv(.C) bool {
 
 pub fn present(data: ?*anyopaque) callconv(.C) bool {
     const embedder: *FLEmbedder = @ptrCast(@alignCast(data));
-    const window: FLWindow = embedder.windows.get(0) orelse {
+    const window: *FLWindow = embedder.windows.get(0) orelse {
         return false;
     };
     _ = c.eglSwapBuffers(
-        embedder.window.display,
+        embedder.windows.display,
         window.surface,
     );
 
@@ -77,10 +77,10 @@ pub fn make_resource_current(data: ?*anyopaque) callconv(.C) bool {
     const embedder: *FLEmbedder = @ptrCast(@alignCast(data));
 
     const result = c.eglMakeCurrent(
-        embedder.window.display,
+        embedder.windows.display,
         c.EGL_NO_SURFACE,
         c.EGL_NO_SURFACE,
-        embedder.window.resource_context,
+        embedder.windows.resource_context,
     );
 
     std.debug.print("Error?: {x}\n", .{c.eglGetError()});

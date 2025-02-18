@@ -87,9 +87,11 @@ pub const KeyboardManager = struct {
     }
 
     pub fn stop_repeat(self: *KeyboardManager) void {
-        self.repeating = false;
-        self.repeat.?.join();
-        self.repeat = null;
+        if (self.repeat != null) {
+            self.repeating = false;
+            self.repeat.?.join();
+            self.repeat = null;
+        }
     }
 };
 

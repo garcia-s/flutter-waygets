@@ -34,12 +34,9 @@ fn add_view_handler(
     embedder: *FLEmbedder,
     handle: ?*const c.FlutterPlatformMessageResponseHandle,
 ) !void {
-    var gp = std.heap.GeneralPurposeAllocator(.{}){};
-    const alloc = gp.allocator();
-
-    const p = std.json.parseFromSlice(
+    var p = std.json.parseFromSlice(
         struct { method: []u8, args: [1]WindowConfig },
-        alloc,
+        embedder.windows.gpa.allocator(),
         str,
         .{ .ignore_unknown_fields = true },
     ) catch |err| {
@@ -47,15 +44,14 @@ fn add_view_handler(
         return;
     };
 
-    try embedder.add_view(p.value.args[0]);
+    try embedder.add_view(&(p.value.args[0]));
+
     defer p.deinit();
     const data = try std.fmt.allocPrintZ(
-        alloc,
+        embedder.windows.gpa.allocator(),
         "[{{\"view_id\": {d} }}]",
-        .{embedder.window_count - 1},
+        .{embedder.windows.window_count - 1},
     );
-
-    defer alloc.free(data);
 
     _ = c.FlutterEngineSendPlatformMessageResponse(
         embedder.engine,
@@ -93,7 +89,7 @@ fn remove_view_handler(
     const data = try std.fmt.allocPrintZ(
         alloc,
         "[{{\"view_id\": {d} }}]",
-        .{embedder.window_count - 1},
+        .{embedder.windows.window_count - 1},
     );
 
     defer alloc.free(data);

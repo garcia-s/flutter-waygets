@@ -1,9 +1,5 @@
 #! /bin/bash
 
-## Instalando hyprland
-sudo apt-get update
-sudo apt-get install -y mir-graphics-drivers-desktop mir-demos wget
-
 ## Zig on deez
 curl -o zig.tar.xz https://ziglang.org/download/0.13.0/zig-linux-x86_64-0.13.0.tar.xz
 mkdir $HOME/dev 
@@ -28,4 +24,4 @@ rm flutter.tar.xz
 
 
 ## Instalar las librerias
-sudo apt-get install -y make libxkbcommon-dev libwayland libwayland-dev libwayland-egl libgl-dev pkgconf
+sudo apt-get install -y make pkgconf libxkbcommon-dev libwayland-dev libglew-dev libegl-dev

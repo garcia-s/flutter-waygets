@@ -30,7 +30,7 @@ pub const FLEmbedder = struct {
     seat: *c.struct_wl_seat = undefined,
 
     ///A struct to manage everything related to egl-wayland
-    window: WindowManager = WindowManager{},
+    windows: WindowManager = WindowManager{},
 
     ///Flutter engine instance
     engine: c.FlutterEngine = undefined,
@@ -50,13 +50,6 @@ pub const FLEmbedder = struct {
     ///Map used to find the correct view_id from a surface pointer
     ///Used while mapping the pointer coordinates to the correct surface
     view_surface_map: std.AutoHashMap(*c.struct_wl_surface, i64) = undefined,
-
-    ///Map used to control the FLWindow instances
-    ///To resize, move, close and create windows
-    windows: std.AutoHashMap(i64, FLWindow) = undefined,
-
-    ///The ammount of current windows alive in the current flutter
-    window_count: i64 = 0,
 
     pub fn init(self: *FLEmbedder, path: *[:0]u8) !void {
         const alloc = self.gpa.allocator();
@@ -86,7 +79,7 @@ pub const FLEmbedder = struct {
         if (self.seat == undefined)
             return error.UninitializedWaylandSeat;
 
-        try self.window.init(self.wl_display);
+        try self.windows.init(self.wl_display);
 
         //Create a dispatch Wayland loop
         _ = try std.Thread.spawn(.{}, wl_loop, .{self.wl_display});
@@ -119,8 +112,6 @@ pub const FLEmbedder = struct {
 
         //TODO: Refactor this to be part of the "window manager"
         //init window context
-        self.windows = std.AutoHashMap(i64, FLWindow).init(alloc);
-
         self.view_surface_map = std.AutoHashMap(
             *c.struct_wl_surface,
             i64,
@@ -221,18 +212,10 @@ pub const FLEmbedder = struct {
         }
     }
 
-    pub fn add_view(self: *FLEmbedder, view: WindowConfig) !void {
+    pub fn add_view(self: *FLEmbedder, view: *WindowConfig) !void {
         //TODO: Might need to move this to a windows manager struct
-        var window = FLWindow{};
-
-        try window.init(&self.window, &view);
-
-        try self.windows.put(self.window_count, window);
-
-        try self.view_surface_map.put(
-            window.wl_surface,
-            self.window_count,
-        );
+        var window = try self.windows.gpa.allocator().create(FLWindow);
+        try window.init(&self.windows, view);
 
         var event = c.FlutterWindowMetricsEvent{
             .struct_size = @sizeOf(c.FlutterWindowMetricsEvent),
@@ -246,47 +229,68 @@ pub const FLEmbedder = struct {
             .physical_view_inset_bottom = 0,
             .physical_view_inset_left = 0,
             .display_id = 0,
-            .view_id = self.window_count,
+            .view_id = self.windows.window_count,
         };
 
-        if (self.window_count != 0)
+        if (self.windows.window_count != 0)
             _ = c.FlutterEngineAddView(
                 self.engine,
                 &c.FlutterAddViewInfo{
                     .struct_size = @sizeOf(c.FlutterAddViewInfo),
-                    .view_id = self.window_count,
+                    .view_id = self.windows.window_count,
                     .user_data = null,
                     .view_metrics = &event,
                     .add_view_callback = add_view_callback,
                 },
             );
-        const res = c.FlutterEngineSendWindowMetricsEvent(self.engine, &event);
-        self.window_count += 1;
+
+        const res = c.FlutterEngineSendWindowMetricsEvent(
+            self.engine,
+            &event,
+        );
+
+        if (res != c.kSuccess) {
+            std.debug.print("sending window metrics failed\n", .{});
+            return error.FailedToSendWindowMetrics;
+        }
+
+        try self.view_surface_map.put(
+            window.wl_surface,
+            self.windows.window_count,
+        );
+
+        self.windows.add_view(window) catch {
+            std.debug.print("Failed to add view to the window manager \n", .{});
+        };
+    }
+
+    pub fn remove_view(self: *FLEmbedder, view_id: i64) !void {
+        try self.windows.remove_view(view_id);
+        const res = c.FlutterEngineRemoveView(
+            self.engine,
+            &c.FlutterRemoveViewInfo{
+                .view_id = view_id,
+                .user_data = null,
+                .remove_view_callback = &remove_view_callback,
+            },
+        );
 
         if (res != c.kSuccess) {
             std.debug.print("Sending window metrics failed\n", .{});
         }
     }
-
-    pub fn remove_view(self: *FLEmbedder, view_id: i64) !void {
-        var window: FLWindow = self.windows.get(view_id) orelse {
-            return error.ViewIdNotFound;
-        };
-
-        try window.destroy(self.window.display);
-        _ = self.windows.remove(view_id);
-    }
 };
 
+//Empty callback called after a flutter view is created, maybe for other channels?
+//Like for channels other than the normal channels
+pub fn add_view_callback(_: [*c]const c.FlutterAddViewResult) callconv(.C) void {}
+
+pub fn remove_view_callback(_: [*c]const c.FlutterRemoveViewResult) callconv(.C) void {}
 //I have no idea what this is for
 fn channel_update_callback(
     _: [*c]const c.FlutterChannelUpdate,
     _: ?*anyopaque,
 ) callconv(.C) void {}
-
-//Empty callback called after a flutter view is created, maybe for other channels?
-//Like for channels other than the normal channels
-pub fn add_view_callback(_: [*c]const c.FlutterAddViewResult) callconv(.C) void {}
 
 // I don't remember how this work, i'm probably going to need this function at some point
 pub fn compute_platform_resolved_locale_callback(

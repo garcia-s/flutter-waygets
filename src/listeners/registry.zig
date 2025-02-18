@@ -49,7 +49,7 @@ fn handle_compositor(
     name: u32,
     version: u32,
 ) callconv(.C) void {
-    embedder.window.compositor = @ptrCast(
+    embedder.windows.compositor = @ptrCast(
         c.wl_registry_bind(
             registry,
             name,
@@ -81,7 +81,7 @@ fn handle_layer_shell(
     name: u32,
     version: u32,
 ) callconv(.C) void {
-    embedder.window.layer_shell = @ptrCast(
+    embedder.windows.layer_shell = @ptrCast(
         c.wl_registry_bind(
             registry,
             name,

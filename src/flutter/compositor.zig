@@ -120,7 +120,7 @@ pub fn destroy_callback(_: ?*anyopaque) callconv(.C) void {}
 pub fn present_view_callback(info: [*c]const c.FlutterPresentViewInfo) callconv(.C) bool {
     const emb: *FLEmbedder = @ptrCast(@alignCast(info.*.user_data));
 
-    const window: FLWindow = emb.windows.get(info.*.view_id) orelse {
+    const window: *FLWindow = emb.windows.get(info.*.view_id) orelse {
         return false;
     };
 
@@ -133,10 +133,10 @@ pub fn present_view_callback(info: [*c]const c.FlutterPresentViewInfo) callconv(
     );
 
     _ = c.eglMakeCurrent(
-        emb.window.display,
+        emb.windows.display,
         window.surface,
         window.surface,
-        emb.window.context,
+        emb.windows.context,
     );
 
     for (0..info.*.layers_count) |i| {
@@ -171,7 +171,7 @@ pub fn present_view_callback(info: [*c]const c.FlutterPresentViewInfo) callconv(
         );
     }
     _ = c.eglSwapBuffers(
-        emb.window.display,
+        emb.windows.display,
         window.surface,
     );
 

@@ -21,6 +21,10 @@ const ctx_attrib: [*c]c.EGLint = @constCast(&[_]c.EGLint{
 });
 
 pub const WindowManager = struct {
+    mux: std.Thread.RwLock = std.Thread.RwLock{},
+    gpa: std.heap.GeneralPurposeAllocator(.{}) =
+        std.heap.GeneralPurposeAllocator(.{}){},
+
     ///Wayland Compositor
     compositor: *c.wl_compositor = undefined,
 
@@ -30,9 +34,19 @@ pub const WindowManager = struct {
     config: c.EGLConfig = null,
     context: c.EGLContext = undefined,
     resource_context: c.EGLContext = undefined,
-    //should have the contexts
+
+    ///Map used to control the FLWindow instances
+    ///To resize, move, close and create windows
+    windows: std.AutoHashMap(i64, *FLWindow) = undefined,
+
+    ///The ammount of current windows alive in the current flutter
+    window_count: i64 = 0,
 
     pub fn init(self: *WindowManager, display: *c.wl_display) !void {
+        const alloc = self.gpa.allocator();
+
+        self.windows = std.AutoHashMap(i64, *FLWindow).init(alloc);
+
         if (self.compositor == undefined)
             return error.UninitializedWaylandCompositor;
 
@@ -90,5 +104,33 @@ pub const WindowManager = struct {
             std.debug.print("Failed to create the EGL resource_context\n", .{});
             return error.EglResourceContextFailed;
         }
+    }
+
+    pub fn add_view(self: *WindowManager, window: *FLWindow) !void {
+        //TODO: Might need to move this to a windows manager struct
+        self.mux.lock();
+        defer self.mux.unlock();
+
+        try self.windows.put(self.window_count, window);
+        self.window_count += 1;
+    }
+
+    pub fn remove_view(self: *WindowManager, view_id: i64) !void {
+        self.mux.lock();
+        defer self.mux.unlock();
+
+        var window: *FLWindow = self.windows.get(view_id) orelse {
+            return error.ViewIdNotFound;
+        };
+
+        try window.destroy(self.display);
+        _ = self.windows.remove(view_id);
+        self.window_count -= 1;
+    }
+
+    pub fn get(self: *WindowManager, id: i64) ?*FLWindow {
+        self.mux.lock();
+        defer self.mux.unlock();
+        return self.windows.get(id);
     }
 };
